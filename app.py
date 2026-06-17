@@ -296,4 +296,4 @@ def main():
         # Almacenar en el estado para persistencia entre clicks del formulario
         st.session_state.df_valores = df_valores
         st.session_state.df_lineas = df_lineas
-        st.session_state.partido_activo = f"{equipo
+        st.session_state.partido_activo = f"{equipo_1} vs {equipo_2}"
