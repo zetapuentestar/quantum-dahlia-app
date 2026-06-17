@@ -6,7 +6,7 @@ def get_team_stats(team_name):
     Recolecta las estadísticas base de un equipo.
     Clave: Usar value=0.0 y step=0.1 para forzar el uso de decimales.
     """
-    st.subheader(f"📊 Estadísticas: {team_name}")
+    st.subheader(f" Estadísticas: {team_name}")
     
     col1, col2 = st.columns(2)
     
@@ -39,7 +39,7 @@ def get_market_odds():
     """
     Recolecta las cuotas de las casas de apuestas.
     """
-    st.subheader("🏦 Cuotas del Mercado (Bookies)")
+    st.subheader(" Cuotas del Mercado (Bookies)")
     
     col1, col2, col3 = st.columns(3)
     
