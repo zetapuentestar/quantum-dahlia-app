@@ -2,15 +2,15 @@ class TeamStats:
     def __init__(self, name, possession, xg, total_shots, shots_on_target, 
                  saves, corners, cards, ht_win_prob, ht_goal_prob):
         self.name = name
-        self.possession = possession / 100.0  # Convertir a decimal
-        self.xg = xg
-        self.total_shots = total_shots
-        self.shots_on_target = shots_on_target
-        self.saves = saves
-        self.corners = corners
-        self.cards = cards
-        self.ht_win_prob = ht_win_prob
-        self.ht_goal_prob = ht_goal_prob
+        self.possession = float(possession) / 100.0
+        self.xg = float(xg)
+        self.total_shots = float(total_shots)
+        self.shots_on_target = float(shots_on_target)
+        self.saves = float(saves)
+        self.corners = float(corners)
+        self.cards = float(cards)
+        self.ht_win_prob = float(ht_win_prob)
+        self.ht_goal_prob = float(ht_goal_prob)
 
 def get_match_data():
     # En una app real, esto vendría de una API, base de datos o input del usuario por consola/UI
