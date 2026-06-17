@@ -1,62 +1,114 @@
+# report.py
+import pandas as pd
 import numpy as np
+from simulation import evaluar_lineas_especificas
 
-def calculate_ev(probability, odds):
-    if odds <= 0: return 0
-    return (probability * odds) - 1
+def calcular_ev(probabilidad_modelo, cuota_bookie):
+    """
+    Calcula el Valor Esperado (EV%).
+    Si la cuota de la bookie es 0 o vacía, retorna 0.0
+    """
+    if cuota_bookie <= 1.0:
+        return 0.0
+    return float((probabilidad_modelo * cuota_bookie - 1) * 100)
 
-def generate_report(sim_data, market_odds):
-    weights = sim_data['weights']
-    total_weight = np.sum(weights)
+def calcular_cuota_justa(probabilidad_modelo):
+    """
+    Calcula la cuota matemática pura basada en la probabilidad del modelo.
+    """
+    if probabilidad_modelo <= 0:
+        return float('inf')
+    return float(1 / probabilidad_modelo)
+
+def generar_reporte_valores(resultados_montecarlo, cuotas_mercado):
+    """
+    Cruza las probabilidades simuladas con las cuotas para generar el DataFrame principal.
+    Evita errores de tipos y asegura consistencia con decimales (floats).
+    """
+    # 1. Extraer probabilidades de la simulación
+    p_1x2 = resultados_montecarlo["prob_1x2"]
+    p_1x2_1t = resultados_montecarlo["prob_1x2_1t"]
+    p_goles = resultados_montecarlo["goles"]
     
-    # Funciones auxiliares para calcular probabilidad pesada
-    def calc_prob(condition):
-        return np.sum(weights[condition]) / total_weight
+    # 2. Extraer cuotas ingresadas por el usuario
+    c_1x2 = cuotas_mercado["1x2"]          # [Local, Empate, Visita]
+    c_g25 = cuotas_mercado["goles_2_5"]     # [Over, Under]
+    c_g15 = cuotas_mercado["goles_1_5"]     # [Over, Under]
+    c_btts = cuotas_mercado["btts_si"]      # Solo Sí
+    c_1t = cuotas_mercado["victoria_1t"]    # [Local 1T, Visita 1T]
 
-    # Condiciones de Mercado
-    h_win = sim_data['goals_h'] > sim_data['goals_a']
-    draw = sim_data['goals_h'] == sim_data['goals_a']
-    a_win = sim_data['goals_h'] < sim_data['goals_a']
-    total_goals = sim_data['goals_h'] + sim_data['goals_a']
-    btts = (sim_data['goals_h'] > 0) & (sim_data['goals_a'] > 0)
+    # 3. Definir la lista de mercados a evaluar
+    datos_reporte = [
+        # Mercado 1X2 Partido Completo
+        {"Mercado": "1X2: Victoria Local", "Prob_Modelo": p_1x2["Local"], "Cuota_Bookie": c_1x2[0]},
+        {"Mercado": "1X2: Empate", "Prob_Modelo": p_1x2["Empate"], "Cuota_Bookie": c_1x2[1]},
+        {"Mercado": "1X2: Victoria Visitante", "Prob_Modelo": p_1x2["Visita"], "Cuota_Bookie": c_1x2[2]},
+        
+        # Mercado 1X2 Primera Mitad (NUEVO)
+        {"Mercado": "1T 1X2: Victoria Local 1T", "Prob_Modelo": p_1x2_1t["Local"], "Cuota_Bookie": c_1t[0]},
+        {"Mercado": "1T 1X2: Victoria Visitante 1T", "Prob_Modelo": p_1x2_1t["Visita"], "Cuota_Bookie": c_1t[1]},
+        
+        # Mercado Goles Totales (2.5)
+        {"Mercado": "Goles: Más de 2.5", "Prob_Modelo": p_goles["over_2_5"], "Cuota_Bookie": c_g25[0]},
+        {"Mercado": "Goles: Menos de 2.5", "Prob_Modelo": p_goles["under_2_5"], "Cuota_Bookie": c_g25[1]},
+        
+        # Mercado Goles Totales (1.5 NUEVO)
+        {"Mercado": "Goles: Más de 1.5", "Prob_Modelo": p_goles["over_1_5"], "Cuota_Bookie": c_g15[0]},
+        {"Mercado": "Goles: Menos de 1.5", "Prob_Modelo": p_goles["under_1_5"], "Cuota_Bookie": c_g15[1]},
+        
+        # Ambos Anotan
+        {"Mercado": "Ambos Anotan: SÍ", "Prob_Modelo": p_goles["btts_si"], "Cuota_Bookie": c_btts}
+    ]
     
-    ht_h_win = sim_data['ht_goals_h'] > sim_data['ht_goals_a']
-    ht_goal = (sim_data['ht_goals_h'] + sim_data['ht_goals_a']) > 0
-
-    # Diccionario de resultados
-    results = {
-        "Victoria Local (1)": calc_prob(h_win),
-        "Empate (X)": calc_prob(draw),
-        "Victoria Visitante (2)": calc_prob(a_win),
-        "Más de 2.5 Goles": calc_prob(total_goals > 2.5),
-        "Menos de 2.5 Goles": calc_prob(total_goals <= 2.5),
-        "Ambos Anotan (Sí)": calc_prob(btts),
-        "Más de 8.5 Corners": calc_prob(sim_data['corners'] > 8.5),
-        "Más de 4.5 Tarjetas": calc_prob(sim_data['cards'] > 4.5),
-        "Victoria Local 1ra Mitad": calc_prob(ht_h_win),
-        "Gol en 1ra Mitad (Sí)": calc_prob(ht_goal)
-    }
-
-    # Estructurar reporte con Confianza y EV
-    report = []
-    for market, prob in results.items():
-        odds = market_odds.get(market, 2.0) # Cuota por defecto 2.0 si no se provee
-        ev = calculate_ev(prob, odds)
-        
-        # Ranking de confianza basado en la probabilidad
-        if prob > 0.65: confidence = "⭐⭐⭐ Alta"
-        elif prob > 0.45: confidence = "⭐⭐ Media"
-        else: confidence = "⭐ Baja"
-        
-        report.append({
-            "Mercado": market,
-            "Probabilidad": f"{prob * 100:.2f}%",
-            "Confianza": confidence,
-            "EV (Valor Esperado)": f"{ev:+.2f}"
-        })
-        
-    # Resultado exacto más probable
-    score_pairs = list(zip(sim_data['goals_h'], sim_data['goals_a']))
-    from collections import Counter
-    most_common_score = Counter(score_pairs).most_common(1)[0][0]
+    # 4. Construir el DataFrame y calcular las métricas derivadas con floats
+    df = pd.DataFrame(datos_reporte)
     
-    return report, most_common_score
+    df["Prob_Modelo (%)"] = (df["Prob_Modelo"] * 100).round(2)
+    df["Cuota_Justa"] = df["Prob_Modelo"].apply(calcular_cuota_justa).round(2)
+    df["EV (%)"] = df.apply(lambda row: calcular_ev(row["Prob_Modelo"], row["Cuota_Bookie"]), axis=1).round(2)
+    
+    # Ordenar columnas para la visualización final
+    columnas_finales = ["Mercado", "Prob_Modelo (%)", "Cuota_Justa", "Cuota_Bookie", "EV (%)"]
+    return df[columnas_finales]
+
+def generar_reporte_lineas_asiaticas(resultados_montecarlo, cuotas_mercado):
+    """
+    Genera un reporte especializado para las líneas de Córners y Tarjetas.
+    Calcula la probabilidad exacta y la cuota justa para las líneas O/U configuradas de forma manual.
+    """
+    lineas = cuotas_mercado["lineas"]
+    vectores = resultados_montecarlo["vectores_raw"]
+    
+    # Evaluar línea de córners simulada contra la línea manual
+    res_corners = evaluar_lineas_especificas(vectores["corners"], lineas["corners"])
+    # Evaluar línea de tarjetas simulada contra la línea manual
+    res_tarjetas = evaluar_lineas_especificas(vectores["tarjetas"], lineas["tarjetas"])
+    
+    datos_lineas = [
+        {
+            "Métrica/Mercado": f"Córners: Más de {lineas['corners']}", 
+            "Prob_Modelo (%)": round(res_corners["Over"] * 100, 2),
+            "Cuota_Justa": round(calcular_cuota_justa(res_corners["Over"]), 2),
+            "Promedio_Proyectado": round(resultados_montecarlo["proyecciones_metricas"]["corners_promedio"], 2)
+        },
+        {
+            "Métrica/Mercado": f"Córners: Menos de {lineas['corners']}", 
+            "Prob_Modelo (%)": round(res_corners["Under"] * 100, 2),
+            "Cuota_Justa": round(calcular_cuota_justa(res_corners["Under"]), 2),
+            "Promedio_Proyectado": round(resultados_montecarlo["proyecciones_metricas"]["corners_promedio"], 2)
+        },
+        {
+            "Métrica/Mercado": f"Tarjetas: Más de {lineas['tarjetas']}", 
+            "Prob_Modelo (%)": round(res_tarjetas["Over"] * 100, 2),
+            "Cuota_Justa": round(calcular_cuota_justa(res_tarjetas["Over"]), 2),
+            "Promedio_Proyectado": round(resultados_montecarlo["proyecciones_metricas"]["tarjetas_promedio"], 2)
+        },
+        {
+            "Métrica/Mercado": f"Tarjetas: Menos de {lineas['tarjetas']}", 
+            "Prob_Modelo (%)": round(res_tarjetas["Under"] * 100, 2),
+            "Cuota_Justa": round(calcular_cuota_justa(res_tarjetas["Under"]), 2),
+            "Promedio_Proyectado": round(resultados_montecarlo["proyecciones_metricas"]["tarjetas_promedio"], 2)
+        }
+    ]
+    
+    return pd.DataFrame(datos_lineas)
