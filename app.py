@@ -137,7 +137,7 @@ def main():
     
     st.markdown("---")
     
-    # Botón de Procesamiento
+   # Botón de Procesamiento
     if st.button("Ejecutar Modelos Cuantitativos"):
         
         # 1. Ejecución en paralelo del backend matemático
@@ -146,6 +146,11 @@ def main():
         
         # 2. Enrutamiento inteligente de datos para la Tabla 1
         if modelo_activo == "Poisson Bivariado / Dixon-Coles":
+            # PARCHE DE SEGURIDAD: Si Poisson no incluye métricas de Primer Tiempo (1T),
+            # le inyectamos valores neutros [Local, Empate, Visitante] para que report.py no lance KeyError.
+            if "prob_1x2_1t" not in analisis_analitico:
+                analisis_analitico["prob_1x2_1t"] = [0.0, 0.0, 0.0]
+                
             # Estricta precisión matemática para mercados 1X2 y Goles
             df_valores = rep.generar_reporte_valores(analisis_analitico, cuotas_mercado)
         else:
