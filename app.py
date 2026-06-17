@@ -263,31 +263,6 @@ def main():
     # Bloque de introducción de Cuotas de Mercado Estándar
     cuotas_mercado = di.get_market_odds()
     
-    # MODIFICACIÓN SOLICITADA: Entrada unificada de Líneas Cortas y Cuotas de la Casa de Apuestas
-    st.markdown("### 📐 Cuotas para Líneas Cortas (Casa de Apuestas)")
-    col_corn, col_tarj = st.columns(2)
-    
-    with col_corn:
-        st.markdown("**📊 Córners Totales**")
-        linea_c = st.number_input("Línea de Córners fijada por la Casa", min_value=0.5, value=9.5, step=0.5)
-        cuota_o_c = st.number_input("Cuota Más de / Over", min_value=1.01, value=1.85, step=0.01, key="odds_over_c")
-        cuota_u_c = st.number_input("Cuota Menos de / Under", min_value=1.01, value=1.85, step=0.01, key="odds_under_c")
-        
-    with col_tarj:
-        st.markdown("**🟨 Tarjetas Totales**")
-        linea_t = st.number_input("Línea de Tarjetas fijada por la Casa", min_value=0.5, value=4.5, step=0.5)
-        cuota_o_t = st.number_input("Cuota Más de / Over", min_value=1.01, value=1.85, step=0.01, key="odds_over_t")
-        cuota_u_t = st.number_input("Cuota Menos de / Under", min_value=1.01, value=1.85, step=0.01, key="odds_under_t")
-    
-    # Inyectar las variables de líneas al diccionario general para retroalimentar el backend
-    if cuotas_mercado is None: cuotas_mercado = {}
-    cuotas_mercado["linea_corners_input"] = linea_c
-    cuotas_mercado["cuota_over_corners"] = cuota_o_c
-    cuotas_mercado["cuota_under_corners"] = cuota_u_c
-    cuotas_mercado["linea_tarjetas_input"] = linea_t
-    cuotas_mercado["cuota_over_tarjetas"] = cuota_o_t
-    cuotas_mercado["cuota_under_tarjetas"] = cuota_u_t
-    
     st.markdown("---")
     
     # Botón de Procesamiento
@@ -302,56 +277,8 @@ def main():
         else:
             df_valores = rep.generar_reporte_valores(analisis_simulado, cuotas_mercado)
             
-        # Generar reporte base de líneas desde Montecarlo
-        df_lineas_raw = rep.generar_reporte_lineas_asiaticas(analisis_simulado, cuotas_mercado)
+        df_lineas = rep.generar_reporte_lineas_asiaticas(analisis_simulado, cuotas_mercado)
         
-        # ---------------------------------------------------------
-        # POST-PROCESAMIENTO INTERNO BLINDADO PARA LÍNEAS CORTAS
-        # ---------------------------------------------------------
-        if df_lineas_raw is not None and not df_lineas_raw.empty:
-            df_lineas = df_lineas_raw.copy()
-            col_id_m = next((c for c in df_lineas.columns if c.lower() in ["mercado", "market", "línea", "linea", "estadística", "estadistica"]), df_lineas.columns[0])
-            
-            cols = df_lineas.columns.tolist()
-            col_c_mas = next((c for c in cols if ("cuota" in c.lower() or "odd" in c.lower()) and ("más" in c.lower() or "over" in c.lower())), None)
-            col_p_mas = next((c for c in cols if ("prob" in c.lower() or "%" in c.lower()) and ("más" in c.lower() or "over" in c.lower())), None)
-            col_e_mas = next((c for c in cols if "ev" in c.lower() and ("más" in c.lower() or "over" in c.lower())), None)
-            
-            col_c_menos = next((c for c in cols if ("cuota" in c.lower() or "odd" in c.lower()) and ("menos" in c.lower() or "under" in c.lower())), None)
-            col_p_menos = next((c for c in cols if ("prob" in c.lower() or "%" in c.lower()) and ("menos" in c.lower() or "under" in c.lower())), None)
-            col_e_menos = next((c for c in cols if "ev" in c.lower() and ("menos" in c.lower() or "under" in c.lower())), None)
-            
-            for idx, row in df_lineas.iterrows():
-                label_m = str(row[col_id_m]).lower()
-                if "corner" in label_m:
-                    if col_c_mas: df_lineas.at[idx, col_c_mas] = cuota_o_c
-                    if col_c_menos: df_lineas.at[idx, col_c_menos] = cuota_u_c
-                    try:
-                        if col_p_mas and col_e_mas:
-                            p_m = float(str(df_lineas.at[idx, col_p_mas]).replace('%','').strip())
-                            if p_m <= 1.0: p_m *= 100
-                            df_lineas.at[idx, col_e_mas] = ((p_m / 100.0) * cuota_o_c - 1) * 100
-                        if col_p_menos and col_e_menos:
-                            p_me = float(str(df_lineas.at[idx, col_p_menos]).replace('%','').strip())
-                            if p_me <= 1.0: p_me *= 100
-                            df_lineas.at[idx, col_e_menos] = ((p_me / 100.0) * cuota_u_c - 1) * 100
-                    except: pass
-                elif "tarjeta" in label_m or "card" in label_m:
-                    if col_c_mas: df_lineas.at[idx, col_c_mas] = cuota_o_t
-                    if col_c_menos: df_lineas.at[idx, col_c_menos] = cuota_u_t
-                    try:
-                        if col_p_mas and col_e_mas:
-                            p_m = float(str(df_lineas.at[idx, col_p_mas]).replace('%','').strip())
-                            if p_m <= 1.0: p_m *= 100
-                            df_lineas.at[idx, col_e_mas] = ((p_m / 100.0) * cuota_o_t - 1) * 100
-                        if col_p_menos and col_e_menos:
-                            p_me = float(str(df_lineas.at[idx, col_p_menos]).replace('%','').strip())
-                            if p_me <= 1.0: p_me *= 100
-                            df_lineas.at[idx, col_e_menos] = ((p_me / 100.0) * cuota_u_t - 1) * 100
-                    except: pass
-        else:
-            df_lineas = None
-            
         st.session_state.df_valores = df_valores
         st.session_state.df_lineas = df_lineas
         st.session_state.partido_activo = f"{equipo_1} vs {equipo_2}"
@@ -385,7 +312,7 @@ def main():
                 st.dataframe(st.session_state.df_lineas.style.set_properties(**propiedades_oscuras), use_container_width=True, hide_index=True)
             
         # ---------------------------------------------------------
-        # ZONA 3: REGRESO A ESTRUCTURA LIMPIA DE CARGA AUTOMÁTICA
+        # ZONA 3: PANEL DE CARGA LIMPIO AL TICKET
         # ---------------------------------------------------------
         st.markdown("### ➕ Panel de Carga al Ticket")
         
