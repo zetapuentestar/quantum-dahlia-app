@@ -62,27 +62,28 @@ if st.button("🚀 Ejecutar Simulación (100,000 iteraciones)", type="primary"):
     with st.spinner('Calculando fuerzas, ejecutando Monte Carlo y evaluando cuotas...'):
         
         home_team = TeamStats(
-            name=home_name, 
-            possession=float(home_poss), 
-            xg=float(home_xg), 
-            total_shots=float(home_shots), 
-            shots_on_target=float(home_shots_target), 
-            saves=float(home_saves), 
-            corners=float(home_corners), 
-            cards=float(home_cards), 
-            ht_win_prob=0.40, 
+            name=home_name,
+            possession=float(home_poss),
+            xg=float(home_xg),
+            total_shots=float(home_shots),
+            shots_on_target=float(home_shots_target),
+            saves=float(home_saves),
+            corners=float(home_corners),
+            cards=float(home_cards),
+            ht_win_prob=0.40,
             ht_goal_prob=0.60
+            
         away_team = TeamStats(
-            name=home_name, 
-            possession=float(home_poss), 
-            xg=float(home_xg), 
-            total_shots=float(home_shots), 
-            shots_on_target=float(home_shots_target), 
-            saves=float(home_saves), 
-            corners=float(home_corners), 
-            cards=float(home_cards), 
-            ht_win_prob=0.40, 
-            ht_goal_prob=0.60
+            name=away_name,
+            possession=float(away_poss),
+            xg=float(away_xg),
+            total_shots=float(away_shots),
+            shots_on_target=float(away_shots_target),
+            saves=float(away_saves),
+            corners=float(away_corners),
+            cards=float(away_cards),
+            ht_win_prob=0.20,
+            ht_goal_prob=0.35
         
         lambda_h, mu_a = calculate_rates(home_team, away_team)
         sim_results = run_monte_carlo(lambda_h, mu_a, home_team, away_team)
