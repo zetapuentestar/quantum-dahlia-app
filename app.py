@@ -125,7 +125,7 @@ def main():
         stats_e1 = di.get_team_stats(equipo_1)
         
     with col_t2:
-        equipo_2 = st.text_input("Escuadra Visitante", value="Rival")
+        equipo_2 = st.text_input("Escuadra Visitante", value="Barcelona")
         stats_e2 = di.get_team_stats(equipo_2)
         # Se eliminó la fórmula de inversión automática para permitir 
         # que las métricas históricas de ambos equipos sean independientes.
