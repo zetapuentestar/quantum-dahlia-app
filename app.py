@@ -19,24 +19,24 @@ with col1:
     st.header("🏠 Equipo Local")
     home_name = st.text_input("Nombre Local", "PSG")
     home_poss = st.slider("Posesión de Balón % (Local)", 0, 100, 65)
-    home_xg = st.number_input("Goles Esperados (xG)", 0.0, 5.0, 2.1, step=0.1)
-    home_shots = st.number_input("Tiros Totales", 0, 40, 15)
-    home_shots_target = st.number_input("Tiros a Puerta", 0, 20, 6)
-    home_saves = st.number_input("Atajadas", 0, 20, 3)
-    home_corners = st.number_input("Corners a favor", 0, 20, 6)
-    home_cards = st.number_input("Tarjetas recibidas", 0, 10, 2)
+    # Permite decimales con step=0.1
+    home_xg = st.number_input("Goles Esperados (xG)", 0.0, 10.0, 2.1, step=0.1)
+    home_shots = st.number_input("Tiros Totales", 0, 100, 15, step=1)
+    home_shots_target = st.number_input("Tiros a Puerta", 0, 50, 6, step=1)
+    home_saves = st.number_input("Atajadas", 0.0, 20.0, 1.5, step=0.1) # Acepta decimales
+    home_corners = st.number_input("Corners", 0, 50, 6, step=1)
+    home_cards = st.number_input("Tarjetas", 0, 20, 2, step=1)
 
 with col2:
     st.header("✈️ Equipo Visitante")
-    away_name = st.text_input("Nombre Visitante", "Rival")
+    away_name = st.text_input("Nombre Visitante", "Barcelona")
     away_poss = 100 - home_poss
-    st.info(f"Posesión Visitante calculada automáticamente: {away_poss}%")
-    away_xg = st.number_input("Goles Esperados (xG) Visitante", 0.0, 5.0, 0.8, step=0.1)
-    away_shots = st.number_input("Tiros Totales Visitante", 0, 40, 7)
-    away_shots_target = st.number_input("Tiros a Puerta Visitante", 0, 20, 2)
-    away_saves = st.number_input("Atajadas Visitante", 0, 20, 5)
-    away_corners = st.number_input("Corners a favor Visitante", 0, 20, 3)
-    away_cards = st.number_input("Tarjetas recibidas Visitante", 0, 10, 3)
+    away_xg = st.number_input("Goles Esperados (xG) Visitante", 0.0, 10.0, 0.8, step=0.1)
+    away_shots = st.number_input("Tiros Totales Visitante", 0, 100, 7, step=1)
+    away_shots_target = st.number_input("Tiros a Puerta Visitante", 0, 50, 2, step=1)
+    away_saves = st.number_input("Atajadas Visitante", 0.0, 20.0, 1.5, step=0.1) # Acepta decimales
+    away_corners = st.number_input("Corners Visitante", 0, 50, 3, step=1)
+    away_cards = st.number_input("Tarjetas Visitante", 0, 20, 3, step=1)
 
 st.markdown("---")
 
