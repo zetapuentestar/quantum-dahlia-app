@@ -5,7 +5,7 @@ import math_models as mm
 import simulation as sim
 import report as rep
 
-# Configuración inicial de la página (Cambiado a 'expanded' para ver el ticket)
+# Configuración inicial de la página (Panel expandido para control total)
 st.set_page_config(
     page_title="Quantum Dahlia - Terminal de Inversión",
     layout="wide",
@@ -61,7 +61,26 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         background-attachment: fixed !important;
     }}
     
-    /* Tipografía y Títulos Limpios sin emojis */
+    /* ---------------------------------------------------------
+    /* NUEVO PARCHE DE DISEÑO: Unificación Estética del Sidebar
+    /* --------------------------------------------------------- */
+    div[data-testid="stSidebar"] {{
+        background-color: #0A0A0C !important;
+        background: linear-gradient(rgba(10, 10, 12, 0.92), rgba(10, 10, 12, 0.92)) !important;
+        border-right: 1px solid rgba(214, 175, 55, 0.25) !important;
+    }}
+    
+    /* Estilizar las cajas de entrada numéricas y sliders en el Sidebar */
+    div[data-testid="stSidebar"] div.stNumberInput, 
+    div[data-testid="stSidebar"] div.stSlider {{
+        border: 1px solid rgba(214, 175, 55, 0.15) !important;
+        background-color: rgba(18, 19, 22, 0.6) !important;
+        padding: 12px !important;
+        border-radius: 4px !important;
+        margin-bottom: 10px;
+    }}
+    
+    /* Tipografía y Títulos Limpios sin emojis globales */
     h1, h2, h3, p, label, span {{
         color: #FFFFFF !important;
         font-family: 'Inter', -apple-system, sans-serif !important;
@@ -74,7 +93,7 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         padding-bottom: 10px;
     }}
     
-    /* Botón de Ejecución (Negro y Dorado Premium) */
+    /* Botones Premium (Negro y Dorado de Quantum Dahlia) */
     .stButton>button {{
         background-color: #121316 !important;
         color: #D4AF37 !important;
@@ -137,7 +156,7 @@ def main():
     aplicar_estilo_dinamico(modelo_activo)
     
     # ---------------------------------------------------------
-    # ZONA 2: Panel de Control del Ticket (Sidebar)
+    # ZONA 2: Panel de Control del Ticket (Sidebar Estilizado)
     # ---------------------------------------------------------
     st.sidebar.markdown("## 📋 Ticket de la Sociedad")
     
@@ -176,9 +195,9 @@ def main():
         else:
             st.sidebar.error(f"📉 EV Combinado: {ev_combinado*100:.1f}% (SIN VALOR)")
             
-        # CALCULADORA DE KELLY INTEGRADA
+        # CALCULADORA DE KELLY INTEGRADA CON BASE AJUSTADA A $25
         st.sidebar.markdown("### 💰 Gestión de Banca (Kelly)")
-        banca_total = st.sidebar.number_input("Banca Común ($)", min_value=1.0, value=100.0, step=5.0)
+        banca_total = st.sidebar.number_input("Banca Común ($)", min_value=1.0, value=25.0, step=1.0)
         fraccion_k = st.sidebar.slider("Fracción de Seguridad", min_value=0.05, max_value=1.0, value=0.25, step=0.05)
         
         pct_banca, dinero_stake = calcular_stake_kelly(prob_acumulada, cuota_acumulada, banca_total, fraccion_k)
