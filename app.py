@@ -61,9 +61,7 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         background-attachment: fixed !important;
     }}
     
-    /* ---------------------------------------------------------
-    /* NUEVO PARCHE DE DISEÑO: Unificación Estética del Sidebar
-    /* --------------------------------------------------------- */
+    /* Unificación Estética del Sidebar */
     div[data-testid="stSidebar"] {{
         background-color: #0A0A0C !important;
         background: linear-gradient(rgba(10, 10, 12, 0.92), rgba(10, 10, 12, 0.92)) !important;
@@ -276,7 +274,7 @@ def main():
         st.dataframe(st.session_state.df_lineas, use_container_width=True, hide_index=True)
         
         # ---------------------------------------------------------
-        # ZONA 3: Constructor Dinámico de Combinadas (Formulario)
+        # ZONA 3: Constructor Dinámico de Combinadas (MODIFICADO SEGURO)
         # ---------------------------------------------------------
         st.markdown("### ➕ Panel de Carga al Ticket")
         with st.form("add_bet_form"):
@@ -288,21 +286,31 @@ def main():
             if btn_agregar and mercado_elegido:
                 fila = st.session_state.df_valores[st.session_state.df_valores["Mercado"] == mercado_elegido].iloc[0]
                 
-                # Evitar duplicados del mismo mercado en el mismo partido
-                ya_existe = any(b["partido"] == st.session_state.partido_activo and b["mercado"] == mercado_elegido for b in st.session_state.combinada_actual)
+                # DETECTOR DINÁMICO DE COLUMNAS (Evita el KeyError buscando coincidencias parciales)
+                columnas_disponibles = st.session_state.df_valores.columns.tolist()
                 
-                if not ya_existe:
-                    st.session_state.combinada_actual.append({
-                        "partido": st.session_state.partido_activo,
-                        "mercado": mercado_elegido,
-                        "cuota": float(fila["Cuota_Bookie"]),
-                        "prob_modelo": float(fila["Prob_Modelo"]),
-                        "ev_individual": float(fila["EV (%)"]) if "EV (%)" in st.session_state.df_valores.columns else 0.0
-                    })
-                    st.success(f"Agregado con éxito: {mercado_elegido}")
-                    st.rerun()
+                col_prob = next((c for c in columnas_disponibles if "prob" in c.lower()), None)
+                col_cuota = next((c for c in columnas_disponibles if "cuota" in c.lower() or "odd" in c.lower()), None)
+                col_ev = next((c for c in columnas_disponibles if "ev" in c.lower()), None)
+                
+                if col_prob and col_cuota:
+                    # Evitar duplicados del mismo mercado en el mismo partido
+                    ya_existe = any(b["partido"] == st.session_state.partido_activo and b["mercado"] == mercado_elegido for b in st.session_state.combinada_actual)
+                    
+                    if not ya_existe:
+                        st.session_state.combinada_actual.append({
+                            "partido": st.session_state.partido_activo,
+                            "mercado": mercado_elegido,
+                            "cuota": float(fila[col_cuota]),
+                            "prob_modelo": float(fila[col_prob]),
+                            "ev_individual": float(fila[col_ev]) if col_ev else 0.0
+                        })
+                        st.success(f"Agregado con éxito: {mercado_elegido}")
+                        st.rerun()
+                    else:
+                        st.warning("Esta selección ya se encuentra en el ticket.")
                 else:
-                    st.warning("Esta selección ya se encuentra en el ticket.")
+                    st.error(f"Error de Estructura: No se mapearon las columnas de Probabilidad o Cuota. Columnas detectadas: {columnas_disponibles}")
 
 if __name__ == "__main__":
     main()
