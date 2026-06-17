@@ -314,7 +314,7 @@ def main():
         # ---------------------------------------------------------
         # ZONA 3: PANEL DE CARGA LIMPIO AL TICKET
         # ---------------------------------------------------------
-        st.markdown("### ➕ Panel de Carga al Ticket")
+        st.markdown("###  Panel de Carga al Ticket")
         
         origen_seleccionado = st.radio(
             "Selecciona la procedencia del mercado que deseas jugar:",
