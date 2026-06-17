@@ -1,118 +1,165 @@
+# app.py
 import streamlit as st
 import pandas as pd
+import data_input as di
+import math_models as mm
+import simulation as sim
+import report as rep
 
-# Importamos tus módulos matemáticos
-from data_input import TeamStats
-from math_models import calculate_rates
-from simulation import run_monte_carlo
-from report import generate_report
+# Configuración inicial de la página
+st.set_page_config(
+    page_title="Quantum Dahlia - Terminal de Inversión",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-st.set_page_config(page_title="Quantum Dahlia Sports", layout="wide")
-st.title("⚽ Quantum Dahlia Sports Investments")
-st.subheader("Motor de Análisis Predictivo (Monte Carlo & Bayes)")
-st.markdown("---")
+def aplicar_estilo_dinamico(modelo_seleccionado):
+    """
+    Inyecta CSS avanzado para controlar el fondo dinámico, eliminar emojis visuales,
+    establecer el modo oscuro absoluto y dar un acabado elegante.
+    """
+    # URLs de imágenes profesionales oscuras (Fondo base de la Copa del Mundo vs Análisis Técnico)
+    imagenes_fondo = {
+        "Simulación Montecarlo (100k)": "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=1920", # Trofeo / Estadio bajo reflectores
+        "Poisson Bivariado / Dixon-Coles": "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=1920" # Red / Textura táctica abstracta
+    }
+    
+    url_fondo = imagenes_fondo.get(modelo_seleccionado, imagenes_fondo["Simulación Montecarlo (100k)"])
+    
+    css = f"""
+    <style>
+    /* Fondo Dinámico con máscara de fusión negra */
+    .stApp {{
+        background-image: url("{url_fondo}");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        background-color: #0A0A0C !important;
+        background-blend-mode: multiply;
+    }}
+    
+    /* Contenedores de datos semi-transparentes elegantes */
+    div[data-testid="stVerticalBlock"] > div {{
+        background-color: rgba(15, 16, 20, 0.65);
+        border-radius: 6px;
+        padding: 10px;
+    }}
+    
+    /* Tipografía y Títulos Limpios */
+    h1, h2, h3, p, label, span {{
+        color: #FFFFFF !important;
+        font-family: 'Inter', -apple-system, sans-serif !important;
+        font-weight: 400;
+    }}
+    
+    h1 {{
+        font-weight: 700 !important;
+        letter-spacing: -0.05em;
+        border-bottom: 1px solid rgba(214, 175, 55, 0.3);
+        padding-bottom: 10px;
+    }}
+    
+    /* Botón de Ejecución de Alta Gama (Negro y Dorado) */
+    .stButton>button {{
+        background-color: #121316 !important;
+        color: #D4AF37 !important;
+        border: 1px solid #D4AF37 !important;
+        border-radius: 4px !important;
+        width: 100%;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        padding: 14px 0px;
+        transition: all 0.4s ease;
+    }}
+    
+    .stButton>button:hover {{
+        background-color: #D4AF37 !important;
+        color: #0A0A0C !important;
+        box-shadow: 0px 0px 20px rgba(214, 175, 55, 0.4);
+        border: 1px solid #D4AF37 !important;
+    }}
+    
+    /* Ocultar elementos innecesarios de Streamlit */
+    #MainMenu, footer, header {{visibility: hidden;}}
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
 
-# 1. Ingreso de estadísticas
-col1, col2 = st.columns(2)
+def colorificar_ev(val):
+    """
+    Aplica estilos de color de forma segura a la columna EV (%).
+    Retorna verde esmeralda si hay valor, o un tono neutro si no lo hay.
+    """
+    try:
+        val_float = float(val)
+        if val_float > 0.0:
+            return 'background-color: rgba(0, 230, 118, 0.15); color: #00E676; font-weight: bold;'
+        elif val_float < 0.0:
+            return 'color: rgba(255, 255, 255, 0.4);'
+    except ValueError:
+        pass
+    return ''
 
-with col1:
-    st.header("🏠 Equipo Local")
-    home_name = st.text_input("Nombre Local", "PSG")
-    home_poss = st.slider("Posesión de Balón % (Local)", 0, 100, 65)
-    # Permite decimales con step=0.1
-    home_xg = st.number_input("Goles Esperados (xG)", 0.0, 10.0, 2.1, step=0.1)
-    home_shots = st.number_input("Tiros Totales", 0, 100, 15, step=1)
-    home_shots_target = st.number_input("Tiros a Puerta", 0, 50, 6, step=1)
-    home_saves = st.number_input("Atajadas", 0.0, 20.0, 1.5, step=0.1) # Acepta decimales
-    home_corners = st.number_input("Corners", 0, 50, 6, step=1)
-    home_cards = st.number_input("Tarjetas", 0, 20, 2, step=1)
-
-with col2:
-    st.header("✈️ Equipo Visitante")
-    away_name = st.text_input("Nombre Visitante", "Barcelona")
-    away_poss = 100 - home_poss
-    away_xg = st.number_input("Goles Esperados (xG) Visitante", 0.0, 10.0, 0.8, step=0.1)
-    away_shots = st.number_input("Tiros Totales Visitante", 0, 100, 7, step=1)
-    away_shots_target = st.number_input("Tiros a Puerta Visitante", 0, 50, 2, step=1)
-    away_saves = st.number_input("Atajadas Visitante", 0.0, 20.0, 1.5, step=0.1) # Acepta decimales
-    away_corners = st.number_input("Corners Visitante", 0, 50, 3, step=1)
-    away_cards = st.number_input("Tarjetas Visitante", 0, 20, 3, step=1)
-
-st.markdown("---")
-
-# 2. NUEVA SECCIÓN: Cuotas de la casa de apuestas
-st.header("💰 Cuotas del Mercado (Bookies)")
-st.write("Ingresa las cuotas que ofrece tu casa de apuestas para calcular el Valor Esperado (EV).")
-
-col_odds1, col_odds2, col_odds3 = st.columns(3)
-with col_odds1:
-    odd_1 = st.number_input("Victoria Local (1)", 1.0, 20.0, 1.95, step=0.05)
-    odd_over = st.number_input("Más de 2.5 Goles", 1.0, 20.0, 1.85, step=0.05)
-with col_odds2:
-    odd_x = st.number_input("Empate (X)", 1.0, 20.0, 3.40, step=0.05)
-    odd_under = st.number_input("Menos de 2.5 Goles", 1.0, 20.0, 1.95, step=0.05)
-with col_odds3:
-    odd_2 = st.number_input("Victoria Visitante (2)", 1.0, 20.0, 4.10, step=0.05)
-    odd_btts = st.number_input("Ambos Anotan (Sí)", 1.0, 20.0, 1.75, step=0.05)
-
-st.markdown("---")
-
-# 3. Ejecución
-if st.button("🚀 Ejecutar Simulación (100,000 iteraciones)", type="primary"):
-    with st.spinner('Calculando fuerzas, ejecutando Monte Carlo y evaluando cuotas...'):
+def main():
+    st.title("QUANTUM DAHLIA SPORTS INVESTMENTS")
+    
+    # Selector de Modelo para cambiar el fondo dinámicamente
+    modelo_activo = st.selectbox(
+        "Arquitectura de Simulación Activa",
+        ["Simulación Montecarlo (100k)", "Poisson Bivariado / Dixon-Coles"]
+    )
+    
+    # Cargar el entorno visual personalizado según el modelo elegido
+    aplicar_estilo_dinamico(modelo_activo)
+    
+    # Bloque de introducción de Datos de Equipos
+    st.markdown("### Parámetros de Rendimiento")
+    col_t1, col_t2 = st.columns(2)
+    
+    with col_t1:
+        equipo_1 = st.text_input("Escuadra Local", value="Paris Saint-Germain")
+        stats_e1 = di.get_team_stats(equipo_1)
         
-        home_team = TeamStats(
-            name=home_name,
-            possession=float(home_poss),
-            xg=float(home_xg),
-            total_shots=float(home_shots),
-            shots_on_target=float(home_shots_target),
-            saves=float(home_saves),
-            corners=float(home_corners),
-            cards=float(home_cards),
-            ht_win_prob=0.40,
-            ht_goal_prob=0.60
-        )
+    with col_t2:
+        equipo_2 = st.text_input("Escuadra Visitante", value="Rival")
+        stats_e2 = di.get_team_stats(equipo_2)
+        # Cálculo automático de posesión inversa
+        stats_e2["posesion"] = 100.0 - stats_e1["posesion"]
+        st.caption(f"Distribución de Posesión Automática para {equipo_2}: {stats_e2['posesion']}%")
+        
+    st.markdown("---")
+    
+    # Bloque de introducción de Cuotas de Mercado
+    cuotas_mercado = di.get_market_odds()
+    
+    st.markdown("---")
+    
+    # Botón de Procesamiento
+    if st.button("Ejecutar Modelos Cuantitativos"):
+        
+        # 1. Ejecución del backend matemático
+        analisis_analitico = mm.procesar_modelos_matematicos(stats_e1, stats_e2, cuotas_mercado)
+        analisis_simulado = sim.ejecutar_montecarlo(stats_e1, stats_e2, n_simulaciones=100000)
+        
+        # 2. Generación de DataFrames estructurados desde report.py
+        df_valores = rep.generar_reporte_valores(analisis_simulado, cuotas_mercado)
+        df_lineas = rep.generar_reporte_lineas_asiaticas(analisis_simulado, cuotas_mercado)
+        
+        # 3. Renderizado de Reporte 1: Mercados Principales con Estilos Anti-KeyError
+        st.markdown("### Proyección de Valor Esperado")
+        
+        if "EV (%)" in df_valores.columns:
+            df_valores_estilado = df_valores.style.map(colorificar_ev, subset=["EV (%)"])
+            st.dataframe(df_valores_estilado, use_container_width=True, hide_index=True)
+        else:
+            st.dataframe(df_valores, use_container_width=True, hide_index=True)
             
-        away_team = TeamStats(
-            name=away_name,
-            possession=float(away_poss),
-            xg=float(away_xg),
-            total_shots=float(away_shots),
-            shots_on_target=float(away_shots_target),
-            saves=float(away_saves),
-            corners=float(away_corners),
-            cards=float(away_cards),
-            ht_win_prob=0.20,
-            ht_goal_prob=0.35
-        )
+        st.markdown("---")
         
-        lambda_h, mu_a = calculate_rates(home_team, away_team)
-        sim_results = run_monte_carlo(lambda_h, mu_a, home_team, away_team)
-        
-        # Conectamos las cuotas de la interfaz con el reporte
-        market_odds = {
-            "Victoria Local (1)": odd_1,
-            "Empate (X)": odd_x,
-            "Victoria Visitante (2)": odd_2,
-            "Más de 2.5 Goles": odd_over,
-            "Menos de 2.5 Goles": odd_under,
-            "Ambos Anotan (Sí)": odd_btts
-        }
-        
-        report_data, exact_score = generate_report(sim_results, market_odds)
-        
-        st.success("¡Simulación completada con éxito!")
-        
-        col_res1, col_res2 = st.columns(2)
-        with col_res1:
-            st.metric("Resultado Exacto Más Probable", f"{exact_score[0]} - {exact_score[1]}")
-        with col_res2:
-            st.metric("Fuerza Ofensiva Base (λ / μ)", f"{lambda_h:.2f} / {mu_a:.2f}")
-            
-        st.subheader("📊 Tabla de Probabilidades y Valor Esperado (EV)")
-        
-        # Resaltamos las filas con EV positivo (una pequeña mejora visual)
-        df = pd.DataFrame(report_data)
-df = pd.DataFrame(report_data)
-st.dataframe(df, use_container_width=True)
+        # 4. Renderizado de Reporte 2: Mercados Estadísticos Volátiles (Córners y Tarjetas)
+        st.markdown("### Estimación de Líneas Cortas")
+        st.dataframe(df_lineas, use_container_width=True, hide_index=True)
+
+if __name__ == "__main__":
+    main()
