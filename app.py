@@ -297,3 +297,39 @@ def main():
         st.session_state.df_valores = df_valores
         st.session_state.df_lineas = df_lineas
         st.session_state.partido_activo = f"{equipo_1} vs {equipo_2}"
+
+    # ==========================================
+    # RENDERIZADO DE LAS TABLAS E INTERACCIÓN
+    # ==========================================
+    if st.session_state.df_valores is not None:
+        st.markdown(f"## Análisis Actual: {st.session_state.partido_activo}")
+        
+        # Renderizado de Reporte 1: Mercados Principales
+        st.markdown("### Proyección de Valor Esperado")
+        if "EV (%)" in st.session_state.df_valores.columns:
+            df_valores_estilado = st.session_state.df_valores.style.map(colorificar_ev, subset=["EV (%)"])
+            st.dataframe(df_valores_estilado, use_container_width=True, hide_index=True)
+        else:
+            st.dataframe(st.session_state.df_valores, use_container_width=True, hide_index=True)
+            
+        st.markdown("---")
+        
+        # Renderizado de Reporte 2: Mercados Estadísticos Volátiles (Córners y Tarjetas)
+        st.markdown("### Estimación de Líneas Cortas")
+        st.dataframe(st.session_state.df_lineas, use_container_width=True, hide_index=True)
+        
+        # ---------------------------------------------------------
+        # ZONA 3: Constructor Dinámico de Combinadas
+        # ---------------------------------------------------------
+        st.markdown("### ➕ Panel de Carga al Ticket")
+        with st.form("add_bet_form"):
+            opciones_mercado = st.session_state.df_valores["Market" if "Market" in st.session_state.df_valores.columns else "Mercado"].tolist()
+            mercado_elegido = st.selectbox("Selecciona el mercado validado para añadir a la combinada:", options=opciones_mercado)
+            
+            btn_agregar = st.form_submit_button("Asegurar Selección en el Ticket")
+            
+            if btn_agregar and mercado_elegido:
+                col_filtro = "Market" if "Market" in st.session_state.df_valores.columns else "Mercado"
+                fila = st.session_state.df_valores[st.session_state.df_valores[col_filtro] == mercado_elegido].iloc[0]
+                
+                # DETECTOR DINÁMICO DE COL
