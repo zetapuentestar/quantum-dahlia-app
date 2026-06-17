@@ -5,7 +5,7 @@ import math_models as mm
 import simulation as sim
 import report as rep
 
-# Configuración inicial de la página (Forzamos que inicie expandida)
+# Configuración inicial de la página (Panel expandido para control total)
 st.set_page_config(
     page_title="Quantum Dahlia - Terminal de Inversión",
     layout="wide",
@@ -61,24 +61,48 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         background-attachment: fixed !important;
     }}
     
-    /* Unificación Estética del Sidebar */
-    div[data-testid="stSidebar"] {{
+    /* ---------------------------------------------------------
+    /* SOLUCIÓN: Forzar Negro Premium Absoluto en el Sidebar
+    /* --------------------------------------------------------- */
+    div[data-testid="stSidebar"], 
+    div[data-testid="stSidebarContent"], 
+    div[data-testid="stSidebar"] > div {{
         background-color: #0A0A0C !important;
-        background: linear-gradient(rgba(10, 10, 12, 0.92), rgba(10, 10, 12, 0.92)) !important;
+        background: #0A0A0C !important;
         border-right: 1px solid rgba(214, 175, 55, 0.25) !important;
+    }}
+    
+    /* Forzar la lectura de textos en blanco dentro del Sidebar */
+    div[data-testid="stSidebar"] h1, 
+    div[data-testid="stSidebar"] h2, 
+    div[data-testid="stSidebar"] h3, 
+    div[data-testid="stSidebar"] p, 
+    div[data-testid="stSidebar"] label, 
+    div[data-testid="stSidebar"] span,
+    div[data-testid="stSidebar"] small,
+    div[data-testid="stSidebar"] div {{
+        color: #FFFFFF !important;
+        font-family: 'Inter', -apple-system, sans-serif !important;
+    }}
+    
+    /* Resaltar las métricas de cuotas y Kelly en Dorado Premium */
+    div[data-testid="stSidebar"] div[data-testid="stMetricValue"] div,
+    div[data-testid="stSidebar"] div[data-testid="stMetricValue"] span {{
+        color: #D4AF37 !important;
+        font-weight: 700 !important;
     }}
     
     /* Estilizar las cajas de entrada numéricas y sliders en el Sidebar */
     div[data-testid="stSidebar"] div.stNumberInput, 
     div[data-testid="stSidebar"] div.stSlider {{
-        border: 1px solid rgba(214, 175, 55, 0.15) !important;
-        background-color: rgba(18, 19, 22, 0.6) !important;
+        border: 1px solid rgba(214, 175, 55, 0.2) !important;
+        background-color: rgba(18, 19, 22, 0.9) !important;
         padding: 12px !important;
         border-radius: 4px !important;
         margin-bottom: 10px;
     }}
     
-    /* Tipografía y Títulos Limpios sin emojis globales */
+    /* Tipografía y Títulos Limpios en Panel Central */
     h1, h2, h3, p, label, span {{
         color: #FFFFFF !important;
         font-family: 'Inter', -apple-system, sans-serif !important;
@@ -92,7 +116,7 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
     }}
     
     /* Botones Premium (Negro y Dorado de Quantum Dahlia) */
-    .stButton>button {{
+    .stButton>button, div[data-testid="stSidebar"] .stButton>button {{
         background-color: #121316 !important;
         color: #D4AF37 !important;
         border: 1px solid #D4AF37 !important;
@@ -105,14 +129,14 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         transition: all 0.4s ease;
     }}
     
-    .stButton>button:hover {{
+    .stButton>button:hover, div[data-testid="stSidebar"] .stButton>button:hover {{
         background-color: #D4AF37 !important;
         color: #0A0A0C !important;
         box-shadow: 0px 0px 25px rgba(214, 175, 55, 0.4);
         border: 1px solid #D4AF37 !important;
     }}
     
-    /* MODIFICACIÓN SEGURA: Ocultar basura visual sin romper el botón del sidebar */
+    /* Ocultar elementos innecesarios de Streamlit sin romper el botón de apertura */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     div[data-testid="stAppDeployButton"] {{display: none !important;}}
