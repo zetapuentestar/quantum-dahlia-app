@@ -72,6 +72,7 @@ if st.button("🚀 Ejecutar Simulación (100,000 iteraciones)", type="primary"):
             cards=float(home_cards),
             ht_win_prob=0.40,
             ht_goal_prob=0.60
+        )
             
         away_team = TeamStats(
             name=away_name,
@@ -84,6 +85,7 @@ if st.button("🚀 Ejecutar Simulación (100,000 iteraciones)", type="primary"):
             cards=float(away_cards),
             ht_win_prob=0.20,
             ht_goal_prob=0.35
+        )
         
         lambda_h, mu_a = calculate_rates(home_team, away_team)
         sim_results = run_monte_carlo(lambda_h, mu_a, home_team, away_team)
