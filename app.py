@@ -5,7 +5,7 @@ import math_models as mm
 import simulation as sim
 import report as rep
 
-# Configuración inicial de la página (Panel expandido para control total)
+# Configuración inicial de la página (Forzamos que inicie expandida)
 st.set_page_config(
     page_title="Quantum Dahlia - Terminal de Inversión",
     layout="wide",
@@ -112,8 +112,11 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         border: 1px solid #D4AF37 !important;
     }}
     
-    /* Ocultar elementos innecesarios de Streamlit */
-    #MainMenu, footer, header {{visibility: hidden;}}
+    /* MODIFICACIÓN SEGURA: Ocultar basura visual sin romper el botón del sidebar */
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    div[data-testid="stAppDeployButton"] {{display: none !important;}}
+    div[data-testid="stHeader"] {{background: transparent !important; background-color: transparent !important;}}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
@@ -274,7 +277,7 @@ def main():
         st.dataframe(st.session_state.df_lineas, use_container_width=True, hide_index=True)
         
         # ---------------------------------------------------------
-        # ZONA 3: Constructor Dinámico de Combinadas (MODIFICADO SEGURO)
+        # ZONA 3: Constructor Dinámico de Combinadas
         # ---------------------------------------------------------
         st.markdown("### ➕ Panel de Carga al Ticket")
         with st.form("add_bet_form"):
@@ -286,7 +289,7 @@ def main():
             if btn_agregar and mercado_elegido:
                 fila = st.session_state.df_valores[st.session_state.df_valores["Mercado"] == mercado_elegido].iloc[0]
                 
-                # DETECTOR DINÁMICO DE COLUMNAS (Evita el KeyError buscando coincidencias parciales)
+                # DETECTOR DINÁMICO DE COLUMNAS
                 columnas_disponibles = st.session_state.df_valores.columns.tolist()
                 
                 col_prob = next((c for c in columnas_disponibles if "prob" in c.lower()), None)
@@ -310,7 +313,7 @@ def main():
                     else:
                         st.warning("Esta selección ya se encuentra en el ticket.")
                 else:
-                    st.error(f"Error de Estructura: No se mapearon las columnas de Probabilidad o Cuota. Columnas detectadas: {columnas_disponibles}")
+                    st.error(f"Error de Estructura: Columnas detectadas: {columnas_disponibles}")
 
 if __name__ == "__main__":
     main()
