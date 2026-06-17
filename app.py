@@ -332,4 +332,30 @@ def main():
                 col_filtro = "Market" if "Market" in st.session_state.df_valores.columns else "Mercado"
                 fila = st.session_state.df_valores[st.session_state.df_valores[col_filtro] == mercado_elegido].iloc[0]
                 
-                # DETECTOR DINÁMICO DE COL
+                # DETECTOR DINÁMICO DE COLUMNAS
+                columnas_disponibles = st.session_state.df_valores.columns.tolist()
+                
+                col_prob = next((c for c in columnas_disponibles if "prob" in c.lower()), None)
+                col_cuota = next((c for c in columnas_disponibles if "cuota" in c.lower() or "odd" in c.lower()), None)
+                col_ev = next((c for c in columnas_disponibles if "ev" in c.lower()), None)
+                
+                if col_prob and col_cuota:
+                    ya_existe = any(b["partido"] == st.session_state.partido_activo and b["mercado"] == mercado_elegido for b in st.session_state.combinada_actual)
+                    
+                    if not ya_existe:
+                        st.session_state.combinada_actual.append({
+                            "partido": st.session_state.partido_activo,
+                            "mercado": mercado_elegido,
+                            "cuota": float(fila[col_cuota]),
+                            "prob_modelo": float(fila[col_prob]),
+                            "ev_individual": float(fila[col_ev]) if col_ev else 0.0
+                        })
+                        st.success(f"Agregado con éxito: {mercado_elegido}")
+                        st.rerun()
+                    else:
+                        st.warning("Esta selección ya se encuentra en el ticket.")
+                else:
+                    st.error(f"Error de Estructura: Columnas detectadas: {columnas_disponibles}")
+
+if __name__ == "__main__":
+    main()
