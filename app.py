@@ -48,12 +48,10 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
     
     css = f"""
     <style>
-    /* Forzar que el contenedor base y sus capas superiores sean transparentes */
     .stApp, div[data-testid="stAppViewBlockContainer"] {{
         background-color: transparent !important;
     }}
     
-    /* Aplicar el fondo con un filtro oscuro del 85% directamente en el contenedor de la vista */
     div[data-testid="stAppViewContainer"] {{
         background: linear-gradient(rgba(10, 10, 12, 0.85), rgba(10, 10, 12, 0.85)), url("{url_fondo}") !important;
         background-size: cover !important;
@@ -61,9 +59,6 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         background-attachment: fixed !important;
     }}
     
-    /* ---------------------------------------------------------
-    /* AJUSTE DEFINITIVO DE LA BARRA SUPERIOR (HEADER)
-    /* --------------------------------------------------------- */
     header[data-testid="stHeader"], div[data-testid="stHeader"] {{
         background-color: #0A0A0C !important;
         background: #0A0A0C !important;
@@ -71,7 +66,6 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         border-bottom: 1px solid rgba(214, 175, 55, 0.15) !important;
     }}
     
-    /* Forzar iconos del header a Blanco Puro */
     header[data-testid="stHeader"] svg, 
     div[data-testid="stHeader"] svg,
     header[data-testid="stHeader"] button,
@@ -82,7 +76,6 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         color: #FFFFFF !important;
     }}
     
-    /* Forzar Negro Premium Absoluto en el Sidebar */
     div[data-testid="stSidebar"], 
     div[data-testid="stSidebarContent"], 
     div[data-testid="stSidebar"] > div {{
@@ -91,7 +84,6 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         border-right: 1px solid rgba(214, 175, 55, 0.25) !important;
     }}
     
-    /* Forzar la lectura de textos en blanco dentro del Sidebar */
     div[data-testid="stSidebar"] h1, 
     div[data-testid="stSidebar"] h2, 
     div[data-testid="stSidebar"] h3, 
@@ -104,14 +96,12 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         font-family: 'Inter', -apple-system, sans-serif !important;
     }}
     
-    /* Resaltar las métricas de cuotas y Kelly en Dorado Premium */
     div[data-testid="stSidebar"] div[data-testid="stMetricValue"] div,
     div[data-testid="stSidebar"] div[data-testid="stMetricValue"] span {{
         color: #D4AF37 !important;
         font-weight: 700 !important;
     }}
     
-    /* Estilizar las cajas de entrada numéricas y sliders en el Sidebar */
     div[data-testid="stSidebar"] div.stNumberInput, 
     div[data-testid="stSidebar"] div.stSlider {{
         border: 1px solid rgba(214, 175, 55, 0.2) !important;
@@ -121,7 +111,6 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         margin-bottom: 10px;
     }}
     
-    /* Tipografía y Títulos Limpios en Panel Central */
     h1, h2, h3, p, label, span {{
         color: #FFFFFF !important;
         font-family: 'Inter', -apple-system, sans-serif !important;
@@ -134,7 +123,6 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         padding-bottom: 10px;
     }}
     
-    /* Botones Premium (Negro y Dorado de Quantum Dahlia) */
     .stButton>button, div[data-testid="stSidebar"] .stButton>button {{
         background-color: #121316 !important;
         color: #D4AF37 !important;
@@ -155,7 +143,6 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         border: 1px solid #D4AF37 !important;
     }}
     
-    /* Inputs y Selectores del Panel Central */
     div.stSelectbox div[data-baseweb="select"] {{
         background-color: rgba(18, 19, 22, 0.9) !important;
         border: 1px solid rgba(214, 175, 55, 0.2) !important;
@@ -200,13 +187,11 @@ def main():
 
     st.title("QUANTUM DAHLIA SPORTS INVESTMENTS")
     
-    # Selector de Modelo para cambiar el fondo dinámicamente
     modelo_activo = st.selectbox(
         "Arquitectura de Simulación Activa",
         ["Simulación Montecarlo (100k)", "Poisson Bivariado / Dixon-Coles"]
     )
     
-    # Cargar el entorno visual personalizado según el modelo elegido
     aplicar_estilo_dinamico(modelo_activo)
     
     # ---------------------------------------------------------
@@ -238,7 +223,6 @@ def main():
             
         st.sidebar.metric(label="Cuota Total Combinada", value=f"{cuota_acumulada:.2f}x")
         
-        # Valor Esperado del Ticket Completo
         ev_combinado = (prob_acumulada * cuota_acumulada) - 1
         
         if contiene_trampa:
@@ -249,7 +233,6 @@ def main():
         else:
             st.sidebar.error(f"📉 EV Combinado: {ev_combinado*100:.1f}% (SIN VALOR)")
             
-        # CALCULADORA DE KELLY INTEGRADA CON BASE AJUSTADA A $25
         st.sidebar.markdown("### 💰 Gestión de Banca (Kelly)")
         banca_total = st.sidebar.number_input("Banca Común ($)", min_value=1.0, value=25.0, step=1.0)
         fraccion_k = st.sidebar.slider("Fracción de Seguridad", min_value=0.05, max_value=1.0, value=0.25, step=0.05)
@@ -263,7 +246,7 @@ def main():
     else:
         st.sidebar.info("Analiza un partido en el panel central para comenzar a estructurar tu ticket.")
 
-    # Bloque de introducción de Datos de Equipos
+    # Parámetros de Rendimiento de Equipos
     st.markdown("### Parámetros de Rendimiento")
     col_t1, col_t2 = st.columns(2)
     
@@ -277,8 +260,33 @@ def main():
         
     st.markdown("---")
     
-    # Bloque de introducción de Cuotas de Mercado
+    # Bloque de introducción de Cuotas de Mercado Estándar
     cuotas_mercado = di.get_market_odds()
+    
+    # MODIFICACIÓN SOLICITADA: Entrada unificada de Líneas Cortas y Cuotas de la Casa de Apuestas
+    st.markdown("### 📐 Cuotas para Líneas Cortas (Casa de Apuestas)")
+    col_corn, col_tarj = st.columns(2)
+    
+    with col_corn:
+        st.markdown("**📊 Córners Totales**")
+        linea_c = st.number_input("Línea de Córners fijada por la Casa", min_value=0.5, value=9.5, step=0.5)
+        cuota_o_c = st.number_input("Cuota Más de / Over", min_value=1.01, value=1.85, step=0.01, key="odds_over_c")
+        cuota_u_c = st.number_input("Cuota Menos de / Under", min_value=1.01, value=1.85, step=0.01, key="odds_under_c")
+        
+    with col_tarj:
+        st.markdown("**🟨 Tarjetas Totales**")
+        linea_t = st.number_input("Línea de Tarjetas fijada por la Casa", min_value=0.5, value=4.5, step=0.5)
+        cuota_o_t = st.number_input("Cuota Más de / Over", min_value=1.01, value=1.85, step=0.01, key="odds_over_t")
+        cuota_u_t = st.number_input("Cuota Menos de / Under", min_value=1.01, value=1.85, step=0.01, key="odds_under_t")
+    
+    # Inyectar las variables de líneas al diccionario general para retroalimentar el backend
+    if cuotas_mercado is None: cuotas_mercado = {}
+    cuotas_mercado["linea_corners_input"] = linea_c
+    cuotas_mercado["cuota_over_corners"] = cuota_o_c
+    cuotas_mercado["cuota_under_corners"] = cuota_u_c
+    cuotas_mercado["linea_tarjetas_input"] = linea_t
+    cuotas_mercado["cuota_over_tarjetas"] = cuota_o_t
+    cuotas_mercado["cuota_under_tarjetas"] = cuota_u_t
     
     st.markdown("---")
     
@@ -294,24 +302,70 @@ def main():
         else:
             df_valores = rep.generar_reporte_valores(analisis_simulado, cuotas_mercado)
             
-        df_lineas = rep.generar_reporte_lineas_asiaticas(analisis_simulado, cuotas_mercado)
+        # Generar reporte base de líneas desde Montecarlo
+        df_lineas_raw = rep.generar_reporte_lineas_asiaticas(analisis_simulado, cuotas_mercado)
         
+        # ---------------------------------------------------------
+        # POST-PROCESAMIENTO INTERNO BLINDADO PARA LÍNEAS CORTAS
+        # ---------------------------------------------------------
+        if df_lineas_raw is not None and not df_lineas_raw.empty:
+            df_lineas = df_lineas_raw.copy()
+            col_id_m = next((c for c in df_lineas.columns if c.lower() in ["mercado", "market", "línea", "linea", "estadística", "estadistica"]), df_lineas.columns[0])
+            
+            cols = df_lineas.columns.tolist()
+            col_c_mas = next((c for c in cols if ("cuota" in c.lower() or "odd" in c.lower()) and ("más" in c.lower() or "over" in c.lower())), None)
+            col_p_mas = next((c for c in cols if ("prob" in c.lower() or "%" in c.lower()) and ("más" in c.lower() or "over" in c.lower())), None)
+            col_e_mas = next((c for c in cols if "ev" in c.lower() and ("más" in c.lower() or "over" in c.lower())), None)
+            
+            col_c_menos = next((c for c in cols if ("cuota" in c.lower() or "odd" in c.lower()) and ("menos" in c.lower() or "under" in c.lower())), None)
+            col_p_menos = next((c for c in cols if ("prob" in c.lower() or "%" in c.lower()) and ("menos" in c.lower() or "under" in c.lower())), None)
+            col_e_menos = next((c for c in cols if "ev" in c.lower() and ("menos" in c.lower() or "under" in c.lower())), None)
+            
+            for idx, row in df_lineas.iterrows():
+                label_m = str(row[col_id_m]).lower()
+                if "corner" in label_m:
+                    if col_c_mas: df_lineas.at[idx, col_c_mas] = cuota_o_c
+                    if col_c_menos: df_lineas.at[idx, col_c_menos] = cuota_u_c
+                    try:
+                        if col_p_mas and col_e_mas:
+                            p_m = float(str(df_lineas.at[idx, col_p_mas]).replace('%','').strip())
+                            if p_m <= 1.0: p_m *= 100
+                            df_lineas.at[idx, col_e_mas] = ((p_m / 100.0) * cuota_o_c - 1) * 100
+                        if col_p_menos and col_e_menos:
+                            p_me = float(str(df_lineas.at[idx, col_p_menos]).replace('%','').strip())
+                            if p_me <= 1.0: p_me *= 100
+                            df_lineas.at[idx, col_e_menos] = ((p_me / 100.0) * cuota_u_c - 1) * 100
+                    except: pass
+                elif "tarjeta" in label_m or "card" in label_m:
+                    if col_c_mas: df_lineas.at[idx, col_c_mas] = cuota_o_t
+                    if col_c_menos: df_lineas.at[idx, col_c_menos] = cuota_u_t
+                    try:
+                        if col_p_mas and col_e_mas:
+                            p_m = float(str(df_lineas.at[idx, col_p_mas]).replace('%','').strip())
+                            if p_m <= 1.0: p_m *= 100
+                            df_lineas.at[idx, col_e_mas] = ((p_m / 100.0) * cuota_o_t - 1) * 100
+                        if col_p_menos and col_e_menos:
+                            p_me = float(str(df_lineas.at[idx, col_p_menos]).replace('%','').strip())
+                            if p_me <= 1.0: p_me *= 100
+                            df_lineas.at[idx, col_e_menos] = ((p_me / 100.0) * cuota_u_t - 1) * 100
+                    except: pass
+        else:
+            df_lineas = None
+            
         st.session_state.df_valores = df_valores
         st.session_state.df_lineas = df_lineas
         st.session_state.partido_activo = f"{equipo_1} vs {equipo_2}"
 
     # =========================================================
-    # RENDERIZADO DE LAS TABLAS
+    # RENDERIZADO DE LAS TABLAS DE PROYECCIONES
     # =========================================================
     if st.session_state.df_valores is not None:
         st.markdown(f"## Análisis Actual: {st.session_state.partido_activo}")
-        
         propiedades_oscuras = {'background-color': '#121316', 'color': '#FFFFFF', 'border-color': '#27272a'}
         
-        # TABLA 1: Mercados Principales
+        # TABLA 1: Valores
         st.markdown("### Proyección de Valor Esperado")
         col_ev_valores = next((c for c in st.session_state.df_valores.columns if "ev" in c.lower()), None)
-        
         if col_ev_valores:
             df_valores_estilado = st.session_state.df_valores.style.set_properties(**propiedades_oscuras).map(colorificar_ev, subset=[col_ev_valores])
             st.dataframe(df_valores_estilado, use_container_width=True, hide_index=True)
@@ -320,7 +374,7 @@ def main():
             
         st.markdown("---")
         
-        # TABLA 2: Líneas Cortas (Córners y Tarjetas)
+        # TABLA 2: Líneas Cortas
         st.markdown("### Estimación de Líneas Cortas")
         if st.session_state.df_lineas is not None:
             col_ev_lineas = next((c for c in st.session_state.df_lineas.columns if "ev" in c.lower()), None)
@@ -331,7 +385,7 @@ def main():
                 st.dataframe(st.session_state.df_lineas.style.set_properties(**propiedades_oscuras), use_container_width=True, hide_index=True)
             
         # ---------------------------------------------------------
-        # ZONA 3: MODIFICADA - CALCULADORA DINÁMICA DE EV REAL
+        # ZONA 3: REGRESO A ESTRUCTURA LIMPIA DE CARGA AUTOMÁTICA
         # ---------------------------------------------------------
         st.markdown("### ➕ Panel de Carga al Ticket")
         
@@ -341,96 +395,81 @@ def main():
             horizontal=True
         )
         
-        # Contenedor premium para la calculadora reactiva
-        with st.container():
+        with st.form("add_bet_form_clean"):
+            df_origen = None
+            col_id = None
+            es_linea_corta = False
+            tiene_columnas_separadas = False
+            direccion = ""
+            
             if origen_seleccionado == "Mercados Principales (Tabla 1)" and st.session_state.df_valores is not None:
                 df_origen = st.session_state.df_valores
                 col_id = next((c for c in df_origen.columns if c.lower() in ["mercado", "market", "opción", "opcion"]), df_origen.columns[0])
                 opciones = df_origen[col_id].dropna().unique().tolist()
-                
                 mercado_elegido = st.selectbox("Selecciona el mercado principal:", options=opciones)
                 
-                fila = df_origen[df_origen[col_id] == mercado_elegido].iloc[0]
-                col_cuota_std = next((c for c in df_origen.columns if "cuota" in c.lower() or "odd" in c.lower()), df_origen.columns[0])
-                col_prob_std = next((c for c in df_origen.columns if "prob" in c.lower() or "%" in c.lower()), df_origen.columns[1])
-                
-                try:
-                    cuota_base = float(str(fila[col_cuota_std]).replace('%', '').strip())
-                    prob_base = float(str(fila[col_prob_std]).replace('%', '').strip())
-                    if 0.0 < prob_base <= 1.0: prob_base *= 100.0
-                except:
-                    cuota_base, prob_base = 1.85, 50.0
-                
-                col_c1, col_c2 = st.columns(2)
-                with col_c1:
-                    cuota_real_casa = st.number_input("Cuota Real Vigente en la Casa", min_value=1.01, value=cuota_base, step=0.01, key="input_cuota_p")
-                with col_c2:
-                    ev_dinamico = ((prob_base / 100.0) * cuota_real_casa - 1) * 100
-                    st.metric("EV Real Calculado", f"{ev_dinamico:.2f}%", delta=f"{ev_dinamico:.1f}%", delta_color="normal")
-                
-                if st.button("Asegurar Selección en el Ticket", key="btn_add_p_fixed"):
-                    st.session_state.combinada_actual.append({
-                        "partido": st.session_state.partido_activo,
-                        "mercado": str(mercado_elegido),
-                        "cuota": cuota_real_casa,
-                        "prob_modelo": prob_base,
-                        "ev_individual": ev_dinamico
-                    })
-                    st.success(f"Agregado: {mercado_elegido} @{cuota_real_casa:.2f}")
-                    st.rerun()
-                    
             elif origen_seleccionado == "Líneas Cortas / Córners / Tarjetas (Tabla 2)" and st.session_state.df_lineas is not None:
                 df_origen = st.session_state.df_lineas
                 col_id = next((c for c in df_origen.columns if c.lower() in ["mercado", "market", "línea", "linea", "estadística", "estadistica"]), df_origen.columns[0])
                 opciones = df_origen[col_id].dropna().unique().tolist()
+                mercado_elegido = st.selectbox("Selecciona la línea o estadística:", options=opciones)
                 
-                mercado_elegido = st.selectbox("Selecciona la línea base (Métrica/Línea):", options=opciones)
-                direccion = st.radio("Pronóstico para esta línea:", ["Más / Over", "Menos / Under"], horizontal=True)
+                columnas_minus = [c.lower() for c in df_origen.columns]
+                tiene_columnas_separadas = any("más" in c or "over" in c or "menos" in c or "under" in c for c in columnas_minus)
                 
-                # Extraer la probabilidad pura del modelo para la dirección elegida
+                if tiene_columnas_separadas:
+                    direccion = st.radio("Pronóstico para esta línea:", ["Más / Over", "Menos / Under"], horizontal=True)
+                    es_linea_corta = True
+            else:
+                st.info("Ejecuta los modelos matemáticos cuantitativos para habilitar las opciones.")
+                mercado_elegido = None
+                
+            btn_agregar = st.form_submit_button("Asegurar Selección en el Ticket")
+            
+            if btn_agregar and mercado_elegido and df_origen is not None:
                 fila = df_origen[df_origen[col_id] == mercado_elegido].iloc[0]
                 columnas_disponibles = df_origen.columns.tolist()
-                variante_col = "más" if "más" in direccion.lower() or "over" in direccion.lower() else "menos"
-                variante_alt = "over" if variante_col == "más" else "under"
                 
-                col_prob = next((c for c in columnas_disponibles if ("prob" in c.lower() or "%" in c.lower()) and (variante_col in c.lower() or variante_alt in c.lower())), None)
-                col_cuota = next((c for c in columnas_disponibles if ("cuota" in c.lower() or "odd" in c.lower()) and (variante_col in c.lower() or variante_alt in c.lower())), None)
+                cuota_f, prob_f, ev_f = 1.00, 0.0, 0.0
+                nombre_mercado_final = str(mercado_elegido)
+                
+                if es_linea_corta and tiene_columnas_separadas:
+                    variante_col = "más" if "más" in direccion.lower() or "over" in direccion.lower() else "menos"
+                    variante_alt = "over" if variante_col == "más" else "under"
+                    
+                    col_cuota = next((c for c in columnas_disponibles if ("cuota" in c.lower() or "odd" in c.lower()) and (variante_col in c.lower() or variante_alt in c.lower())), None)
+                    col_prob = next((c for c in columnas_disponibles if ("prob" in c.lower() or "%" in c.lower()) and (variante_col in c.lower() or variante_alt in c.lower())), None)
+                    col_ev = next((c for c in columnas_disponibles if "ev" in c.lower() and (variante_col in c.lower() or variante_alt in c.lower())), None)
+                    
+                    nombre_mercado_final = f"{mercado_elegido} - {direccion}"
+                else:
+                    col_cuota = next((c for c in columnas_disponibles if "cuota" in c.lower() or "odd" in c.lower()), None)
+                    col_prob = next((c for c in columnas_disponibles if "prob" in c.lower() or "%" in c.lower()), None)
+                    col_ev = next((c for c in columnas_disponibles if "ev" in c.lower()), None)
                 
                 try:
-                    prob_base = float(str(fila[col_prob]).replace('%', '').strip()) if col_prob else 50.0
-                    if 0.0 < prob_base <= 1.0: prob_base *= 100.0
-                    cuota_base = float(str(fila[col_cuota]).replace('%', '').strip()) if col_cuota else 1.85
-                except:
-                    prob_base = 50.0
-                    cuota_base = 1.85
+                    if col_cuota and pd.notna(fila[col_cuota]): cuota_f = float(str(fila[col_cuota]).replace('%', '').strip())
+                    if col_prob and pd.notna(fila[col_prob]): prob_f = float(str(fila[col_prob]).replace('%', '').strip())
+                    if col_ev and pd.notna(fila[col_ev]): ev_f = float(str(fila[col_ev]).replace('%', '').strip())
+                except (ValueError, TypeError):
+                    pass
                 
-                # Campos dinámicos para capturar cuotas reales de la casa de apuestas
-                col_l1, col_l2 = st.columns(2)
-                with col_l1:
-                    cuota_real_casa = st.number_input(f"Cuota de la Casa para {direccion}", min_value=1.01, value=cuota_base, step=0.01, key="input_cuota_l")
-                with col_l2:
-                    # RECALCULO DE EV REAL EN TIEMPO REAL
-                    ev_dinamico = ((prob_base / 100.0) * cuota_real_casa - 1) * 100
-                    st.metric("EV Real Calculado", f"{ev_dinamico:.2f}%", delta=f"{ev_dinamico:.1f}%")
+                if 0.0 < prob_f <= 1.0: prob_f *= 100.0
+                    
+                ya_existe = any(b["partido"] == st.session_state.partido_activo and b["mercado"] == nombre_mercado_final for b in st.session_state.combinada_actual)
                 
-                nombre_mercado_final = f"{mercado_elegido} - {direccion}"
-                
-                if st.button("Asegurar Selección en el Ticket", key="btn_add_l_fixed"):
-                    ya_existe = any(b["partido"] == st.session_state.partido_activo and b["mercado"] == nombre_mercado_final for b in st.session_state.combinada_actual)
-                    if not ya_existe:
-                        st.session_state.combinada_actual.append({
-                            "partido": st.session_state.partido_activo,
-                            "mercado": nombre_mercado_final,
-                            "cuota": cuota_real_casa,
-                            "prob_modelo": prob_base,
-                            "ev_individual": ev_dinamico
-                        })
-                        st.success(f"Agregado al Ticket: {nombre_mercado_final} @{cuota_real_casa:.2f} (EV: {ev_dinamico:.1f}%)")
-                        st.rerun()
-                    else:
-                        st.warning("Esta selección ya se encuentra guardada en el ticket.")
-            else:
-                st.info("Ejecuta los modelos matemáticos cuantitativos para habilitar el panel de carga.")
+                if not ya_existe:
+                    st.session_state.combinada_actual.append({
+                        "partido": st.session_state.partido_activo,
+                        "mercado": nombre_mercado_final,
+                        "cuota": cuota_f,
+                        "prob_modelo": prob_f,
+                        "ev_individual": ev_f
+                    })
+                    st.success(f"Agregado con éxito: {nombre_mercado_final} @{cuota_f:.2f} (EV: {ev_f:.1f}%)")
+                    st.rerun()
+                else:
+                    st.warning("Esta selección ya se encuentra guardada en el ticket.")
 
 if __name__ == "__main__":
     main()
