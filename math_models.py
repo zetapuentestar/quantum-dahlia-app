@@ -1,38 +1,56 @@
+# math_models.py
 import numpy as np
+import pandas as pd
+from scipy.stats import poisson
 
-def bayesian_update(prior_rate, evidence_xg, evidence_shots_target, weight_xg=0.7, weight_shots=0.3):
+def calcular_probabilidades_poisson(goles_esperados_local, goles_esperados_visita, max_goles=7):
     """
-    Actualiza la tasa esperada de goles (lambda/mu) usando xG y tiros a puerta como evidencia.
+    Genera una matriz de probabilidades de marcadores exactos usando Poisson.
     """
-    expected_from_stats = (evidence_xg * weight_xg) + ((evidence_shots_target * 0.3) * weight_shots)
-    # Actualización bayesiana simplificada (combinación lineal de prior y evidencia)
-    posterior_rate = (prior_rate * 0.3) + (expected_from_stats * 0.7)
-    return max(0.1, posterior_rate) # Evitar tasas negativas o nulas
-
-def calculate_rates(home_team, away_team):
-    """
-    Calcula los parámetros lambda (goles esperados local) y mu (goles esperados visitante).
-    """
-    # Fuerza base usando posesión y tiros como "Prior"
-    home_prior = (home_team.possession * 2) + (home_team.total_shots * 0.1) - (away_team.saves * 0.1)
-    away_prior = (away_team.possession * 2) + (away_team.total_shots * 0.1) - (home_team.saves * 0.1)
+    # Generar distribuciones individuales
+    prob_local = [poisson.pmf(i, goles_esperados_local) for i in range(max_goles)]
+    prob_visita = [poisson.pmf(i, goles_esperados_visita) for i in range(max_goles)]
     
-    # Parámetros actualizados
-    lambda_home = bayesian_update(home_prior, home_team.xg, home_team.shots_on_target)
-    mu_away = bayesian_update(away_prior, away_team.xg, away_team.shots_on_target)
-    
-    return lambda_home, mu_away
+    # Crear matriz bivariada (asumiendo independencia inicial antes de Dixon-Coles)
+    matriz_prob = np.outer(prob_local, prob_visita)
+    return matriz_prob
 
-def dixon_coles_adjustment(goals_h, goals_a, lambda_h, mu_a, rho=0.1):
+def analizar_mercados_base(matriz_prob):
     """
-    Aplica el ajuste de Dixon-Coles a la matriz de probabilidades.
+    Extrae las probabilidades de los mercados tradicionales y los nuevos (1.5 goles)
+    a partir de la matriz de marcadores exactos.
     """
-    if goals_h == 0 and goals_a == 0:
-        return max(0, 1 - lambda_h * mu_a * rho)
-    elif goals_h == 0 and goals_a == 1:
-        return max(0, 1 + lambda_h * rho)
-    elif goals_h == 1 and goals_a == 0:
-        return max(0, 1 + mu_a * rho)
-    elif goals_h == 1 and goals_a == 1:
-        return max(0, 1 - rho)
-    return 1.0
+    # Mercado 1X2
+    prob_1 = np.tril(matriz_prob, -1).sum()  # Triángulo inferior (Gana Local)
+    prob_x = np.trace(matriz_prob)           # Diagonal (Empate)
+    prob_2 = np.triu(matriz_prob, 1).sum()   # Triángulo superior (Gana Visita)
+    
+    # Mercado Goles Totales (Over/Under 2.5)
+    prob_under_2_5 = matriz_prob[0:3, 0:3]
+    mask_under_2_5 = np.array([[i+j < 2.5 for j in range(3)] for i in range(3)])
+    prob_u25 = np.sum(prob_under_2_5[mask_under_2_5])
+    prob_o25 = 1 - prob_u25
+    
+    # NUEVO: Mercado Goles Totales (Over/Under 1.5)
+    prob_under_1_5 = matriz_prob[0:2, 0:2]
+    mask_under_1_5 = np.array([[i+j < 1.5 for j in range(2)] for i in range(2)])
+    prob_u15 = np.sum(prob_under_1_5[mask_under_1_5])
+    prob_o15 = 1 - prob_u15
+
+    # Ambos Anotan (BTTS)
+    prob_btts_no = matriz_prob[0, :].sum() + matriz_prob[:, 0].sum() - matriz_prob[0, 0]
+    prob_btts_si = 1 - prob_btts_no
+    
+    return {
+        "1X2": {"Local": prob_1, "Empate": prob_x, "Visita": prob_2},
+        "O/U 2.5": {"Over": prob_o25, "Under": prob_u25},
+        "O/U 1.5": {"Over": prob_o15, "Under": prob_u15},
+        "BTTS": {"Si": prob_btts_si, "No": prob_btts_no}
+    }
+
+def estimar_primera_mitad(goles_esperados_total, factor_1t=0.45):
+    """
+    Estima el lambda (goles esperados) para la primera mitad.
+    El fútbol históricamente ve el 45% de los goles en el 1T y 55% en el 2T.
+    """
+    return goles_esperados_total * factor_1t
