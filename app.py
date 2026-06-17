@@ -1,4 +1,3 @@
-# app.py
 import streamlit as st
 import pandas as pd
 import data_input as di
@@ -6,19 +5,40 @@ import math_models as mm
 import simulation as sim
 import report as rep
 
-# Configuración inicial de la página
+# Configuración inicial de la página (Cambiado a 'expanded' para ver el ticket)
 st.set_page_config(
     page_title="Quantum Dahlia - Terminal de Inversión",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
+
+def calcular_stake_kelly(prob_combinada, cuota_total, banca_total, fraccion_kelly=0.25):
+    """
+    Calcula el dinero exacto a apostar basado en el Criterio de Kelly Fraccionado.
+    """
+    if cuota_total <= 1 or prob_combinada <= 0:
+        return 0.0, 0.0
+        
+    b = cuota_total - 1  # Cuota neta
+    p = prob_combinada
+    q = 1.0 - p
+    
+    # Fórmula clásica de Kelly
+    f_star = (b * p - q) / b
+    
+    if f_star <= 0:
+        return 0.0, 0.0
+        
+    porcentaje_apuesta = f_star * fraccion_kelly
+    dinero_a_apostar = banca_total * porcentaje_apuesta
+    
+    return porcentaje_apuesta * 100, dinero_a_apostar
 
 def aplicar_estilo_dinamico(modelo_seleccionado):
     """
     Inyecta CSS avanzado apuntando al contenedor exacto de Streamlit
     y aplicando un overlay sutil para garantizar la visibilidad de la imagen.
     """
-    # Enlaces web directos en alta definición (Fútbol de Élite / Copa Mundial)
     imagenes_fondo = {
         "Simulación Montecarlo (100k)": "https://i.pinimg.com/736x/9d/2d/14/9d2d14b652fb4f21ab530ea256c37fcc.jpg",
         "Poisson Bivariado / Dixon-Coles": "https://i.pinimg.com/736x/9d/2d/14/9d2d14b652fb4f21ab530ea256c37fcc.jpg"
@@ -36,14 +56,6 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
     /* Aplicar el fondo con un filtro oscuro del 85% directamente en el contenedor de la vista */
     div[data-testid="stAppViewContainer"] {{
         background: linear-gradient(rgba(10, 10, 12, 0.85), rgba(10, 10, 12, 0.85)), url("{url_fondo}") !important;
-        background-size: cover !important;
-        background-position: center !important;
-        background-attachment: fixed !important;
-    }}
-    
-    /* Aplicar el fondo con un filtro oscuro calibrado para que resalte la imagen */
-    div[data-testid="stAppViewContainer"] {{
-        background: linear-gradient(rgba(10, 10, 12, 0.75), rgba(10, 10, 12, 0.75)), url("{url_fondo}") !important;
         background-size: cover !important;
         background-position: center !important;
         background-attachment: fixed !important;
@@ -90,10 +102,6 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
     st.markdown(css, unsafe_allow_html=True)
 
 def colorificar_ev(val):
-    """
-    Aplica estilos de color de forma segura a la columna EV (%).
-    Retorna verde esmeralda si hay valor, o un tono neutro si no lo hay.
-    """
     try:
         val_float = float(val)
         if val_float > 0.0:
@@ -105,6 +113,18 @@ def colorificar_ev(val):
     return ''
 
 def main():
+    # ---------------------------------------------------------
+    # ZONA 1: Inicialización del Estado de la Sesión
+    # ---------------------------------------------------------
+    if "combinada_actual" not in st.session_state:
+        st.session_state.combinada_actual = []
+    if "df_valores" not in st.session_state:
+        st.session_state.df_valores = None
+    if "df_lineas" not in st.session_state:
+        st.session_state.df_lineas = None
+    if "partido_activo" not in st.session_state:
+        st.session_state.partido_activo = ""
+
     st.title("QUANTUM DAHLIA SPORTS INVESTMENTS")
     
     # Selector de Modelo para cambiar el fondo dinámicamente
@@ -116,6 +136,60 @@ def main():
     # Cargar el entorno visual personalizado según el modelo elegido
     aplicar_estilo_dinamico(modelo_activo)
     
+    # ---------------------------------------------------------
+    # ZONA 2: Panel de Control del Ticket (Sidebar)
+    # ---------------------------------------------------------
+    st.sidebar.markdown("## 📋 Ticket de la Sociedad")
+    
+    if st.sidebar.button("Vaciar Ticket"):
+        st.session_state.combinada_actual = []
+        st.rerun()
+        
+    cuota_acumulada = 1.0
+    prob_acumulada = 1.0
+    contiene_trampa = False
+    
+    if st.session_state.combinada_actual:
+        for bet in st.session_state.combinada_actual:
+            alerta = "⚠️" if bet['ev_individual'] < -3.0 else "🔹"
+            if bet['ev_individual'] < -3.0:
+                contiene_trampa = True
+                
+            st.sidebar.write(f"{alerta} **{bet['partido']}**")
+            st.sidebar.write(f"   _{bet['mercado']}_")
+            st.sidebar.write(f"   Cuota: {bet['cuota']:.2f} | EV: {bet['ev_individual']:.1f}%")
+            st.sidebar.markdown("---")
+            
+            cuota_acumulada *= bet['cuota']
+            prob_acumulada *= (bet['prob_modelo'] / 100.0)
+            
+        st.sidebar.metric(label="Cuota Total Combinada", value=f"{cuota_acumulada:.2f}x")
+        
+        # Valor Esperado del Ticket Completo
+        ev_combinado = (prob_acumulada * cuota_acumulada) - 1
+        
+        if contiene_trampa:
+            st.sidebar.warning("¡Cuidado! El ticket incluye selecciones con EV Negativo (Cuotas Trampa).")
+            
+        if ev_combinado > 0:
+            st.sidebar.success(f"📈 EV Combinado: +{ev_combinado*100:.1f}% (VALOR)")
+        else:
+            st.sidebar.error(f"📉 EV Combinado: {ev_combinado*100:.1f}% (SIN VALOR)")
+            
+        # CALCULADORA DE KELLY INTEGRADA
+        st.sidebar.markdown("### 💰 Gestión de Banca (Kelly)")
+        banca_total = st.sidebar.number_input("Banca Común ($)", min_value=1.0, value=100.0, step=5.0)
+        fraccion_k = st.sidebar.slider("Fracción de Seguridad", min_value=0.05, max_value=1.0, value=0.25, step=0.05)
+        
+        pct_banca, dinero_stake = calcular_stake_kelly(prob_acumulada, cuota_acumulada, banca_total, fraccion_k)
+        
+        if dinero_stake > 0:
+            st.sidebar.metric(label="Inversión Sugerida", value=f"${dinero_stake:.2f}", delta=f"{pct_banca:.1f}% de banca")
+        else:
+            st.sidebar.info("Kelly recomienda: No arriesgar capital en esta combinación.")
+    else:
+        st.sidebar.info("Analiza un partido en el panel central para comenzar a estructurar tu ticket.")
+
     # Bloque de introducción de Datos de Equipos
     st.markdown("### Parámetros de Rendimiento")
     col_t1, col_t2 = st.columns(2)
@@ -127,8 +201,6 @@ def main():
     with col_t2:
         equipo_2 = st.text_input("Escuadra Visitante", value="Barcelona")
         stats_e2 = di.get_team_stats(equipo_2)
-        # Se eliminó la fórmula de inversión automática para permitir 
-        # que las métricas históricas de ambos equipos sean independientes.
         
     st.markdown("---")
     
@@ -137,16 +209,14 @@ def main():
     
     st.markdown("---")
     
-   # Botón de Procesamiento
+    # Botón de Procesamiento
     if st.button("Ejecutar Modelos Cuantitativos"):
-        
         # 1. Ejecución en paralelo del backend matemático
         analisis_analitico = mm.procesar_modelos_matematicos(stats_e1, stats_e2, cuotas_mercado)
         analisis_simulado = sim.ejecutar_montecarlo(stats_e1, stats_e2, n_simulaciones=100000)
         
         # 2. Enrutamiento inteligente de datos para la Tabla 1
         if modelo_activo == "Poisson Bivariado / Dixon-Coles":
-            # PARCHE DEFINITIVO: Mapeamos tanto 'Visita' como 'Visitante' para acoplarse a report.py
             if "prob_1x2_1t" not in analisis_analitico:
                 analisis_analitico["prob_1x2_1t"] = {
                     "Local": 0.0, 
@@ -154,32 +224,66 @@ def main():
                     "Visita": 0.0, 
                     "Visitante": 0.0
                 }
-                
-            # Estricta precisión matemática para mercados 1X2 y Goles
             df_valores = rep.generar_reporte_valores(analisis_analitico, cuotas_mercado)
         else:
-            # Proyección por fuerza bruta para mercados principales
             df_valores = rep.generar_reporte_valores(analisis_simulado, cuotas_mercado)
             
         # 3. La Tabla 2 SIEMPRE se alimenta de Montecarlo para Córners y Tarjetas
         df_lineas = rep.generar_reporte_lineas_asiaticas(analisis_simulado, cuotas_mercado)
         
-        # ==========================================
-        # RENDERIZADO DE LAS TABLAS EN LA INTERFAZ
-        # ==========================================
+        # Almacenar en el estado para persistencia entre clicks del formulario
+        st.session_state.df_valores = df_valores
+        st.session_state.df_lineas = df_lineas
+        st.session_state.partido_activo = f"{equipo_1} vs {equipo_2}"
+
+    # ==========================================
+    # RENDERIZADO DE LAS TABLAS E INTERACCIÓN
+    # ==========================================
+    if st.session_state.df_valores is not None:
+        st.markdown(f"## Análisis Actual: {st.session_state.partido_activo}")
         
         # Renderizado de Reporte 1: Mercados Principales
         st.markdown("### Proyección de Valor Esperado")
-        if "EV (%)" in df_valores.columns:
-            df_valores_estilado = df_valores.style.map(colorificar_ev, subset=["EV (%)"])
+        if "EV (%)" in st.session_state.df_valores.columns:
+            df_valores_estilado = st.session_state.df_valores.style.map(colorificar_ev, subset=["EV (%)"])
             st.dataframe(df_valores_estilado, use_container_width=True, hide_index=True)
         else:
-            st.dataframe(df_valores, use_container_width=True, hide_index=True)
+            st.dataframe(st.session_state.df_valores, use_container_width=True, hide_index=True)
             
         st.markdown("---")
         
         # Renderizado de Reporte 2: Mercados Estadísticos Volátiles (Córners y Tarjetas)
         st.markdown("### Estimación de Líneas Cortas")
-        st.dataframe(df_lineas, use_container_width=True, hide_index=True)
+        st.dataframe(st.session_state.df_lineas, use_container_width=True, hide_index=True)
+        
+        # ---------------------------------------------------------
+        # ZONA 3: Constructor Dinámico de Combinadas (Formulario)
+        # ---------------------------------------------------------
+        st.markdown("### ➕ Panel de Carga al Ticket")
+        with st.form("add_bet_form"):
+            opciones_mercado = st.session_state.df_valores["Mercado"].tolist()
+            mercado_elegido = st.selectbox("Selecciona el mercado validado para añadir a la combinada:", options=opciones_mercado)
+            
+            btn_agregar = st.form_submit_button("Asegurar Selección en el Ticket")
+            
+            if btn_agregar and mercado_elegido:
+                fila = st.session_state.df_valores[st.session_state.df_valores["Mercado"] == mercado_elegido].iloc[0]
+                
+                # Evitar duplicados del mismo mercado en el mismo partido
+                ya_existe = any(b["partido"] == st.session_state.partido_activo and b["mercado"] == mercado_elegido for b in st.session_state.combinada_actual)
+                
+                if not ya_existe:
+                    st.session_state.combinada_actual.append({
+                        "partido": st.session_state.partido_activo,
+                        "mercado": mercado_elegido,
+                        "cuota": float(fila["Cuota_Bookie"]),
+                        "prob_modelo": float(fila["Prob_Modelo"]),
+                        "ev_individual": float(fila["EV (%)"]) if "EV (%)" in st.session_state.df_valores.columns else 0.0
+                    })
+                    st.success(f"Agregado con éxito: {mercado_elegido}")
+                    st.rerun()
+                else:
+                    st.warning("Esta selección ya se encuentra en el ticket.")
+
 if __name__ == "__main__":
     main()
