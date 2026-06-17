@@ -43,7 +43,7 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
     
     /* Aplicar el fondo con un filtro oscuro calibrado para que resalte la imagen */
     div[data-testid="stAppViewContainer"] {{
-        background: linear-gradient(rgba(10, 10, 12, 0.55), rgba(10, 10, 12, 0.55)), url("{url_fondo}") !important;
+        background: linear-gradient(rgba(10, 10, 12, 0.65), rgba(10, 10, 12, 0.65)), url("{url_fondo}") !important;
         background-size: cover !important;
         background-position: center !important;
         background-attachment: fixed !important;
