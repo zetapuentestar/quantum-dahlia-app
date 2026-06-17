@@ -41,13 +41,12 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         background-attachment: fixed !important;
     }}
     
-    /* Contenedores de datos semi-transparentes elegantes */
-    div[data-testid="stVerticalBlock"] > div {{
-        background-color: rgba(20, 21, 26, 0.75) !important;
-        border-radius: 8px;
-        padding: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    /* Aplicar el fondo con un filtro oscuro calibrado para que resalte la imagen */
+    div[data-testid="stAppViewContainer"] {{
+        background: linear-gradient(rgba(10, 10, 12, 0.55), rgba(10, 10, 12, 0.55)), url("{url_fondo}") !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-attachment: fixed !important;
     }}
     
     /* Tipografía y Títulos Limpios sin emojis */
