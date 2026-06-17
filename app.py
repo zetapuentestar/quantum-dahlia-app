@@ -15,20 +15,20 @@ st.set_page_config(
 
 def aplicar_estilo_dinamico(modelo_seleccionado):
     """
-    Inyecta CSS avanzado para controlar el fondo dinámico, eliminar emojis visuales,
-    establecer el modo oscuro absoluto y dar un acabado elegante.
+    Inyecta CSS avanzado para controlar el fondo dinámico mediante enlaces web,
+    establecer el modo oscuro absoluto y dar un acabado premium.
     """
-    # URLs de imágenes profesionales oscuras (Fondo base de la Copa del Mundo vs Análisis Técnico)
+    # Enlaces web directos en alta definición (Fútbol de Élite / Copa Mundial)
     imagenes_fondo = {
-        "Simulación Montecarlo (100k)": "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=1920", # Trofeo / Estadio bajo reflectores
-        "Poisson Bivariado / Dixon-Coles": "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=1920" # Red / Textura táctica abstracta
+        "Simulación Montecarlo (100k)": "https://unsplash.com/es/fotos/grey-concrete-figurine-oW8ph9u07uo
+        "Poisson Bivariado / Dixon-Coles": "https://unsplash.com/es/fotos/grey-concrete-figurine-oW8ph9u07uo
     }
     
     url_fondo = imagenes_fondo.get(modelo_seleccionado, imagenes_fondo["Simulación Montecarlo (100k)"])
     
     css = f"""
     <style>
-    /* Fondo Dinámico con máscara de fusión negra */
+    /* Fondo Dinámico con máscara de fusión negra profunda */
     .stApp {{
         background-image: url("{url_fondo}");
         background-size: cover;
@@ -40,16 +40,16 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
     
     /* Contenedores de datos semi-transparentes elegantes */
     div[data-testid="stVerticalBlock"] > div {{
-        background-color: rgba(15, 16, 20, 0.65);
+        background-color: rgba(15, 16, 20, 0.75);
         border-radius: 6px;
-        padding: 10px;
+        padding: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.03);
     }}
     
-    /* Tipografía y Títulos Limpios */
+    /* Tipografía y Títulos Limpios sin emojis */
     h1, h2, h3, p, label, span {{
         color: #FFFFFF !important;
         font-family: 'Inter', -apple-system, sans-serif !important;
-        font-weight: 400;
     }}
     
     h1 {{
@@ -59,7 +59,7 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         padding-bottom: 10px;
     }}
     
-    /* Botón de Ejecución de Alta Gama (Negro y Dorado) */
+    /* Botón de Ejecución (Negro y Dorado Premium) */
     .stButton>button {{
         background-color: #121316 !important;
         color: #D4AF37 !important;
@@ -76,7 +76,7 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
     .stButton>button:hover {{
         background-color: #D4AF37 !important;
         color: #0A0A0C !important;
-        box-shadow: 0px 0px 20px rgba(214, 175, 55, 0.4);
+        box-shadow: 0px 0px 25px rgba(214, 175, 55, 0.4);
         border: 1px solid #D4AF37 !important;
     }}
     
