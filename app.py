@@ -114,6 +114,5 @@ if st.button("🚀 Ejecutar Simulación (100,000 iteraciones)", type="primary"):
         
         # Resaltamos las filas con EV positivo (una pequeña mejora visual)
         df = pd.DataFrame(report_data)
-        st.subheader("📊 Tabla de Probabilidades y Valor Esperado (EV)")
 df = pd.DataFrame(report_data)
 st.dataframe(df, use_container_width=True)
