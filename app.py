@@ -1,0 +1,96 @@
+import streamlit as st
+import pandas as pd
+
+# Importamos tus módulos matemáticos
+from data_input import TeamStats
+from math_models import calculate_rates
+from simulation import run_monte_carlo
+from report import generate_report
+
+st.set_page_config(page_title="Quantum Dahlia Sports", layout="wide")
+st.title("⚽ Quantum Dahlia Sports Investments")
+st.subheader("Motor de Análisis Predictivo (Monte Carlo & Bayes)")
+st.markdown("---")
+
+# 1. Ingreso de estadísticas
+col1, col2 = st.columns(2)
+
+with col1:
+    st.header("🏠 Equipo Local")
+    home_name = st.text_input("Nombre Local", "PSG")
+    home_poss = st.slider("Posesión de Balón % (Local)", 0, 100, 65)
+    home_xg = st.number_input("Goles Esperados (xG)", 0.0, 5.0, 2.1, step=0.1)
+    home_shots = st.number_input("Tiros Totales", 0, 40, 15)
+    home_shots_target = st.number_input("Tiros a Puerta", 0, 20, 6)
+    home_saves = st.number_input("Atajadas", 0, 20, 3)
+    home_corners = st.number_input("Corners a favor", 0, 20, 6)
+    home_cards = st.number_input("Tarjetas recibidas", 0, 10, 2)
+
+with col2:
+    st.header("✈️ Equipo Visitante")
+    away_name = st.text_input("Nombre Visitante", "Rival")
+    away_poss = 100 - home_poss
+    st.info(f"Posesión Visitante calculada automáticamente: {away_poss}%")
+    away_xg = st.number_input("Goles Esperados (xG) Visitante", 0.0, 5.0, 0.8, step=0.1)
+    away_shots = st.number_input("Tiros Totales Visitante", 0, 40, 7)
+    away_shots_target = st.number_input("Tiros a Puerta Visitante", 0, 20, 2)
+    away_saves = st.number_input("Atajadas Visitante", 0, 20, 5)
+    away_corners = st.number_input("Corners a favor Visitante", 0, 20, 3)
+    away_cards = st.number_input("Tarjetas recibidas Visitante", 0, 10, 3)
+
+st.markdown("---")
+
+# 2. NUEVA SECCIÓN: Cuotas de la casa de apuestas
+st.header("💰 Cuotas del Mercado (Bookies)")
+st.write("Ingresa las cuotas que ofrece tu casa de apuestas para calcular el Valor Esperado (EV).")
+
+col_odds1, col_odds2, col_odds3 = st.columns(3)
+with col_odds1:
+    odd_1 = st.number_input("Victoria Local (1)", 1.0, 20.0, 1.95, step=0.05)
+    odd_over = st.number_input("Más de 2.5 Goles", 1.0, 20.0, 1.85, step=0.05)
+with col_odds2:
+    odd_x = st.number_input("Empate (X)", 1.0, 20.0, 3.40, step=0.05)
+    odd_under = st.number_input("Menos de 2.5 Goles", 1.0, 20.0, 1.95, step=0.05)
+with col_odds3:
+    odd_2 = st.number_input("Victoria Visitante (2)", 1.0, 20.0, 4.10, step=0.05)
+    odd_btts = st.number_input("Ambos Anotan (Sí)", 1.0, 20.0, 1.75, step=0.05)
+
+st.markdown("---")
+
+# 3. Ejecución
+if st.button("🚀 Ejecutar Simulación (100,000 iteraciones)", type="primary"):
+    with st.spinner('Calculando fuerzas, ejecutando Monte Carlo y evaluando cuotas...'):
+        
+        home_team = TeamStats(home_name, home_poss, home_xg, home_shots, home_shots_target, 
+                              home_saves, home_corners, home_cards, 0.40, 0.60)
+        away_team = TeamStats(away_name, away_poss, away_xg, away_shots, away_shots_target, 
+                              away_saves, away_corners, away_cards, 0.20, 0.35)
+        
+        lambda_h, mu_a = calculate_rates(home_team, away_team)
+        sim_results = run_monte_carlo(lambda_h, mu_a, home_team, away_team)
+        
+        # Conectamos las cuotas de la interfaz con el reporte
+        market_odds = {
+            "Victoria Local (1)": odd_1,
+            "Empate (X)": odd_x,
+            "Victoria Visitante (2)": odd_2,
+            "Más de 2.5 Goles": odd_over,
+            "Menos de 2.5 Goles": odd_under,
+            "Ambos Anotan (Sí)": odd_btts
+        }
+        
+        report_data, exact_score = generate_report(sim_results, market_odds)
+        
+        st.success("¡Simulación completada con éxito!")
+        
+        col_res1, col_res2 = st.columns(2)
+        with col_res1:
+            st.metric("Resultado Exacto Más Probable", f"{exact_score[0]} - {exact_score[1]}")
+        with col_res2:
+            st.metric("Fuerza Ofensiva Base (λ / μ)", f"{lambda_h:.2f} / {mu_a:.2f}")
+            
+        st.subheader("📊 Tabla de Probabilidades y Valor Esperado (EV)")
+        
+        # Resaltamos las filas con EV positivo (una pequeña mejora visual)
+        df = pd.DataFrame(report_data)
+        st.dataframe(df.style.map(lambda x: 'background-color: rgba(0, 255, 0, 0.2)' if (isinstance(x, (int, float)) and x > 0 and df.columns.get_loc('EV (%)') == df.columns.get_loc(df.columns[-1])) else '', subset=['EV (%)']), use_container_width=True)
