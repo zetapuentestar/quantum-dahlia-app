@@ -163,19 +163,18 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
     """
     st.markdown(css, unsafe_allow_html=True)
 
-# --- MODIFICACIÓN 1: AJUSTE DE COLORES EXPLICITOS PARA EVITAR TEXTO INVISIBLE ---
 def colorificar_ev(val):
     try:
         val_float = float(val)
         if val_float > 0.0:
-            # Fondo dorado oscuro opaco, texto dorado brillante
+            # Fondo dorado oscuro sutil, texto dorado brillante
             return 'background-color: #2c2001; color: #D4AF37; font-weight: bold;'
         elif val_float < 0.0:
-            return 'background-color: #18181b; color: #f07167;'
+            return 'background-color: #121316; color: #f07167;'
         else:
-            return 'background-color: #18181b; color: #94a3b8;'
+            return 'background-color: #121316; color: #94a3b8;'
     except (ValueError, TypeError):
-        return 'background-color: #18181b; color: #94a3b8;'
+        return 'background-color: #121316; color: #94a3b8;'
 
 def main():
     # ---------------------------------------------------------
@@ -234,7 +233,7 @@ def main():
         ev_combinado = (prob_acumulada * cuota_acumulada) - 1
         
         if contiene_trampa:
-            st.sidebar.warning("¡Cuidado! El ticket includes selecciones con EV Negativo (Cuotas Trampa).")
+            st.sidebar.warning("¡Cuidado! El ticket incluye selecciones con EV Negativo (Cuotas Trampa).")
             
         if ev_combinado > 0:
             st.sidebar.success(f"📈 EV Combinado: +{ev_combinado*100:.1f}% (VALOR)")
@@ -276,79 +275,95 @@ def main():
     
     # Botón de Procesamiento
     if st.button("Ejecutar Modelos Cuantitativos"):
-        # 1. Ejecución en paralelo del backend matemático
+        # 1. Ejecución simultánea de los backends matemáticos
         analisis_analitico = mm.procesar_modelos_matematicos(stats_e1, stats_e2, cuotas_mercado)
         analisis_simulado = sim.ejecutar_montecarlo(stats_e1, stats_e2, n_simulaciones=100000)
         
-        # 2. Enrutamiento inteligente de datos para la Tabla 1
+        # 2. ENRUTAMIENTO HÍBRIDO INTELIGENTE PARA EVITAR EL BUG 'inf'
         if modelo_activo == "Poisson Bivariado / Dixon-Coles":
-            if "prob_1x2_1t" not in analisis_analitico:
-                analisis_analitico["prob_1x2_1t"] = {
-                    "Local": 0.0, 
-                    "Empate": 0.0, 
-                    "Visita": 0.0, 
-                    "Visitante": 0.0
-                }
+            # Si Poisson no genera las probabilidades del 1T o vienen vacías/en cero, usamos Montecarlo de soporte
+            if "prob_1x2_1t" not in analisis_analitico or any(v == 0.0 for v in analisis_analitico.get("prob_1x2_1t", {}).values()):
+                analisis_analitico["prob_1x2_1t"] = analisis_simulado.get("prob_1x2_1t", {"Local": 33.3, "Empate": 33.3, "Visita": 33.4})
             df_valores = rep.generar_reporte_valores(analisis_analitico, cuotas_mercado)
         else:
             df_valores = rep.generar_reporte_valores(analisis_simulado, cuotas_mercado)
             
-        # 3. La Tabla 2 SIEMPRE se alimenta de Montecarlo para Córners y Tarjetas
+        # 3. Las Líneas de Córners y Tarjetas SIEMPRE usan el motor probabilístico estocástico (Montecarlo)
         df_lineas = rep.generar_reporte_lineas_asiaticas(analisis_simulado, cuotas_mercado)
         
-        # Almacenar en el estado para persistencia entre clicks del formulario
+        # Almacenar en el estado de sesión
         st.session_state.df_valores = df_valores
         st.session_state.df_lineas = df_lineas
         st.session_state.partido_activo = f"{equipo_1} vs {equipo_2}"
 
     # =========================================================
-    # MODIFICACIÓN 2: RENDERIZADO DE LAS TABLAS MODO OSCURO TOTAL
+    # MODIFICACIÓN 2: RENDERIZADO DE LAS TABLAS (ESTILOS ARREGLADOS)
     # =========================================================
     if st.session_state.df_valores is not None:
         st.markdown(f"## Análisis Actual: {st.session_state.partido_activo}")
         
-        # Diccionario de propiedades CSS para forzar la tabla oscura premium
         propiedades_oscuras = {
-            'background-color': '#121316',  # Fondo oscuro juego con los botones
-            'color': '#FFFFFF',             # Texto blanco puro para lectura perfecta
-            'border-color': '#27272a'       # Bordes sutiles oscuros
+            'background-color': '#121316',  
+            'color': '#FFFFFF',             
+            'border-color': '#27272a'       
         }
         
-        # Renderizado de Reporte 1: Mercados Principales
+        # TABLA 1: Mercados Principales
         st.markdown("### Proyección de Valor Esperado")
-        if "EV (%)" in st.session_state.df_valores.columns:
-            # CORRECCIÓN: Primero el fondo oscuro global, luego el mapa específico para que no se sobreescriba
+        col_ev_valores = next((c for c in st.session_state.df_valores.columns if "ev" in c.lower()), None)
+        
+        if col_ev_valores:
+            # CORRECCIÓN DE CAPAS CSS: .set_properties primero, .map al final
             df_valores_estilado = st.session_state.df_valores.style \
                 .set_properties(**propiedades_oscuras) \
-                .map(colorificar_ev, subset=["EV (%)"])
+                .map(colorificar_ev, subset=[col_ev_valores])
             st.dataframe(df_valores_estilado, use_container_width=True, hide_index=True)
         else:
-            df_valores_oscuro = st.session_state.df_valores.style.set_properties(**propiedades_oscuras)
-            st.dataframe(df_valores_oscuro, use_container_width=True, hide_index=True)
+            st.dataframe(st.session_state.df_valores.style.set_properties(**propiedades_oscuras), use_container_width=True, hide_index=True)
             
         st.markdown("---")
         
-        # Renderizado de Reporte 2: Mercados Estadísticos Volátiles (Córners y Tarjetas)
+        # TABLA 2: Líneas Cortas (Córners y Tarjetas)
         st.markdown("### Estimación de Líneas Cortas")
-        df_lineas_oscuro = st.session_state.df_lineas.style.set_properties(**propiedades_oscuras)
-        st.dataframe(df_lineas_oscuro, use_container_width=True, hide_index=True)
-        
+        if st.session_state.df_lineas is not None:
+            col_ev_lineas = next((c for c in st.session_state.df_lineas.columns if "ev" in c.lower()), None)
+            
+            if col_ev_lineas:
+                df_lineas_estilado = st.session_state.df_lineas.style \
+                    .set_properties(**propiedades_oscuras) \
+                    .map(colorificar_ev, subset=[col_ev_lineas])
+                st.dataframe(df_lineas_estilado, use_container_width=True, hide_index=True)
+            else:
+                st.dataframe(st.session_state.df_lineas.style.set_properties(**propiedades_oscuras), use_container_width=True, hide_index=True)
+            
         # ---------------------------------------------------------
-        # ZONA 3: Constructor Dinámico de Combinadas
+        # ZONA 3: Constructor Dinámico y Unificado de Combinadas
         # ---------------------------------------------------------
         st.markdown("### ➕ Panel de Carga al Ticket")
         with st.form("add_bet_form"):
-            opciones_mercado = st.session_state.df_valores["Market" if "Market" in st.session_state.df_valores.columns else "Mercado"].tolist()
-            mercado_elegido = st.selectbox("Selecciona el mercado validado para añadir a la combinada:", options=opciones_mercado)
+            col_m_valores = "Market" if "Market" in st.session_state.df_valores.columns else "Mercado"
+            col_m_lineas = "Market" if (st.session_state.df_lineas is not None and "Market" in st.session_state.df_lineas.columns) else ("Mercado" if (st.session_state.df_lineas is not None and "Mercado" in st.session_state.df_lineas.columns) else None)
+            
+            # Unificar mercados de ambas fuentes de datos
+            opciones_valores = st.session_state.df_valores[col_m_valores].tolist() if col_m_valores in st.session_state.df_valores.columns else []
+            opciones_lineas = st.session_state.df_lineas[col_m_lineas].tolist() if (st.session_state.df_lineas is not None and col_m_lineas and col_m_lineas in st.session_state.df_lineas.columns) else []
+            
+            opciones_totales = opciones_valores + opciones_lineas
+            mercado_elegido = st.selectbox("Selecciona cualquier mercado o línea corta validada:", options=opciones_totales)
             
             btn_agregar = st.form_submit_button("Asegurar Selección en el Ticket")
             
             if btn_agregar and mercado_elegido:
-                col_filtro = "Market" if "Market" in st.session_state.df_valores.columns else "Mercado"
-                fila = st.session_state.df_valores[st.session_state.df_valores[col_filtro] == mercado_elegido].iloc[0]
-                
-                # DETECTOR DINÁMICO DE COLUMNAS
-                columnas_disponibles = st.session_state.df_valores.columns.tolist()
+                # Localizar dinámicamente el origen de la fila seleccionada
+                if mercado_elegido in opciones_valores:
+                    df_origen = st.session_state.df_valores
+                    col_filtro = col_m_valores
+                else:
+                    df_origen = st.session_state.df_lineas
+                    col_filtro = col_m_lineas
+                    
+                fila = df_origen[df_origen[col_filtro] == mercado_elegido].iloc[0]
+                columnas_disponibles = df_origen.columns.tolist()
                 
                 col_prob = next((c for c in columnas_disponibles if "prob" in c.lower()), None)
                 col_cuota = next((c for c in columnas_disponibles if "cuota" in c.lower() or "odd" in c.lower()), None)
@@ -358,12 +373,19 @@ def main():
                     ya_existe = any(b["partido"] == st.session_state.partido_activo and b["mercado"] == mercado_elegido for b in st.session_state.combinada_actual)
                     
                     if not ya_existe:
+                        try:
+                            cuota_f = float(fila[col_cuota])
+                            prob_f = float(fila[col_prob])
+                            ev_f = float(fila[col_ev]) if col_ev else 0.0
+                        except (ValueError, TypeError):
+                            cuota_f, prob_f, ev_f = 1.00, 0.0, -100.0
+                        
                         st.session_state.combinada_actual.append({
                             "partido": st.session_state.partido_activo,
                             "mercado": mercado_elegido,
-                            "cuota": float(fila[col_cuota]),
-                            "prob_modelo": float(fila[col_prob]),
-                            "ev_individual": float(fila[col_ev]) if col_ev else 0.0
+                            "cuota": cuota_f,
+                            "prob_modelo": prob_f,
+                            "ev_individual": ev_f
                         })
                         st.success(f"Agregado con éxito: {mercado_elegido}")
                         st.rerun()
