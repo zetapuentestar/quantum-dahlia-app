@@ -163,16 +163,21 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
     """
     st.markdown(css, unsafe_allow_html=True)
 
+# --- MODIFICACIÓN 1: AJUSTE DE COLORES EXPLICITOS PARA EVITAR TEXTO INVISIBLE ---
 def colorificar_ev(val):
     try:
         val_float = float(val)
         if val_float > 0.0:
-            return 'background-color: rgba(0, 230, 118, 0.15); color: #00E676; font-weight: bold;'
+            # Verde oscuro de fondo con texto verde brillante
+            return 'background-color: #1b4332; color: #72efdd; font-weight: bold;'
         elif val_float < 0.0:
-            return 'color: rgba(255, 255, 255, 0.4);'
-    except ValueError:
-        pass
-    return ''
+            # Texto coral/rojo sutil para EV negativo, fondo oscuro explícito
+            return 'background-color: #18181b; color: #f07167;'
+        else:
+            # EV Neutro (0.0)
+            return 'background-color: #18181b; color: #94a3b8;'
+    except (ValueError, TypeError):
+        return 'background-color: #18181b; color: #94a3b8;'
 
 def main():
     # ---------------------------------------------------------
@@ -231,7 +236,7 @@ def main():
         ev_combinado = (prob_acumulada * cuota_acumulada) - 1
         
         if contiene_trampa:
-            st.sidebar.warning("¡Cuidado! El ticket incluye selecciones con EV Negativo (Cuotas Trampa).")
+            st.sidebar.warning("¡Cuidado! El ticket includes selecciones con EV Negativo (Cuotas Trampa).")
             
         if ev_combinado > 0:
             st.sidebar.success(f"📈 EV Combinado: +{ev_combinado*100:.1f}% (VALOR)")
@@ -298,25 +303,37 @@ def main():
         st.session_state.df_lineas = df_lineas
         st.session_state.partido_activo = f"{equipo_1} vs {equipo_2}"
 
-    # ==========================================
-    # RENDERIZADO DE LAS TABLAS E INTERACCIÓN
-    # ==========================================
+    # =========================================================
+    # MODIFICACIÓN 2: RENDERIZADO DE LAS TABLAS MODO OSCURO TOTAL
+    # =========================================================
     if st.session_state.df_valores is not None:
         st.markdown(f"## Análisis Actual: {st.session_state.partido_activo}")
+        
+        # Diccionario de propiedades CSS para forzar la tabla oscura premium
+        propiedades_oscuras = {
+            'background-color': '#121316',  # Fondo oscuro juego con los botones
+            'color': '#FFFFFF',             # Texto blanco puro para lectura perfecta
+            'border-color': '#27272a'       # Bordes sutiles oscuros
+        }
         
         # Renderizado de Reporte 1: Mercados Principales
         st.markdown("### Proyección de Valor Esperado")
         if "EV (%)" in st.session_state.df_valores.columns:
-            df_valores_estilado = st.session_state.df_valores.style.map(colorificar_ev, subset=["EV (%)"])
+            # Encadenamos la colorificación del EV y aplicamos el fondo oscuro al resto de celdas
+            df_valores_estilado = st.session_state.df_valores.style \
+                .map(colorificar_ev, subset=["EV (%)"]) \
+                .set_properties(**propiedades_oscuras)
             st.dataframe(df_valores_estilado, use_container_width=True, hide_index=True)
         else:
-            st.dataframe(st.session_state.df_valores, use_container_width=True, hide_index=True)
+            df_valores_oscuro = st.session_state.df_valores.style.set_properties(**propiedades_oscuras)
+            st.dataframe(df_valores_oscuro, use_container_width=True, hide_index=True)
             
         st.markdown("---")
         
         # Renderizado de Reporte 2: Mercados Estadísticos Volátiles (Córners y Tarjetas)
         st.markdown("### Estimación de Líneas Cortas")
-        st.dataframe(st.session_state.df_lineas, use_container_width=True, hide_index=True)
+        df_lineas_oscuro = st.session_state.df_lineas.style.set_properties(**propiedades_oscuras)
+        st.dataframe(df_lineas_oscuro, use_container_width=True, hide_index=True)
         
         # ---------------------------------------------------------
         # ZONA 3: Constructor Dinámico de Combinadas
