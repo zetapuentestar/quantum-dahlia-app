@@ -71,7 +71,7 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         border-bottom: 1px solid rgba(214, 175, 55, 0.15) !important;
     }}
     
-    /* Forzar iconos del header (GitHub, Ajustes, Desplegar) a Blanco Puro */
+    /* Forzar iconos del header a Blanco Puro */
     header[data-testid="stHeader"] svg, 
     div[data-testid="stHeader"] svg,
     header[data-testid="stHeader"] button,
@@ -155,7 +155,17 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         border: 1px solid #D4AF37 !important;
     }}
     
-    /* Ocultar elementos innecesarios */
+    /* Inputs y Selectores del Panel Central */
+    div.stSelectbox div[data-baseweb="select"] {{
+        background-color: rgba(18, 19, 22, 0.9) !important;
+        border: 1px solid rgba(214, 175, 55, 0.2) !important;
+    }}
+    
+    div.stNumberInput input {{
+        background-color: rgba(18, 19, 22, 0.9) !important;
+        color: #FFFFFF !important;
+    }}
+    
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     div[data-testid="stAppDeployButton"] {{display: none !important;}}
@@ -274,11 +284,9 @@ def main():
     
     # Botón de Procesamiento
     if st.button("Ejecutar Modelos Cuantitativos"):
-        # 1. Ejecución simultánea de los backends matemáticos
         analisis_analitico = mm.procesar_modelos_matematicos(stats_e1, stats_e2, cuotas_mercado)
         analisis_simulado = sim.ejecutar_montecarlo(stats_e1, stats_e2, n_simulaciones=100000)
         
-        # 2. ENRUTAMIENTO HÍBRIDO INTELIGENTE PARA EVITAR EL BUG 'inf'
         if modelo_activo == "Poisson Bivariado / Dixon-Coles":
             if "prob_1x2_1t" not in analisis_analitico or any(v == 0.0 for v in analisis_analitico.get("prob_1x2_1t", {}).values()):
                 analisis_analitico["prob_1x2_1t"] = analisis_simulado.get("prob_1x2_1t", {"Local": 33.3, "Empate": 33.3, "Visita": 33.4})
@@ -286,34 +294,26 @@ def main():
         else:
             df_valores = rep.generar_reporte_valores(analisis_simulado, cuotas_mercado)
             
-        # 3. Las Líneas de Córners y Tarjetas SIEMPRE usan el motor probabilístico estocástico (Montecarlo)
         df_lineas = rep.generar_reporte_lineas_asiaticas(analisis_simulado, cuotas_mercado)
         
-        # Almacenar en el estado de sesión
         st.session_state.df_valores = df_valores
         st.session_state.df_lineas = df_lineas
         st.session_state.partido_activo = f"{equipo_1} vs {equipo_2}"
 
     # =========================================================
-    # RENDERIZADO DE LAS TABLAS (ESTILOS ARREGLADOS)
+    # RENDERIZADO DE LAS TABLAS
     # =========================================================
     if st.session_state.df_valores is not None:
         st.markdown(f"## Análisis Actual: {st.session_state.partido_activo}")
         
-        propiedades_oscuras = {
-            'background-color': '#121316',  
-            'color': '#FFFFFF',             
-            'border-color': '#27272a'       
-        }
+        propiedades_oscuras = {'background-color': '#121316', 'color': '#FFFFFF', 'border-color': '#27272a'}
         
         # TABLA 1: Mercados Principales
         st.markdown("### Proyección de Valor Esperado")
         col_ev_valores = next((c for c in st.session_state.df_valores.columns if "ev" in c.lower()), None)
         
         if col_ev_valores:
-            df_valores_estilado = st.session_state.df_valores.style \
-                .set_properties(**propiedades_oscuras) \
-                .map(colorificar_ev, subset=[col_ev_valores])
+            df_valores_estilado = st.session_state.df_valores.style.set_properties(**propiedades_oscuras).map(colorificar_ev, subset=[col_ev_valores])
             st.dataframe(df_valores_estilado, use_container_width=True, hide_index=True)
         else:
             st.dataframe(st.session_state.df_valores.style.set_properties(**propiedades_oscuras), use_container_width=True, hide_index=True)
@@ -324,111 +324,113 @@ def main():
         st.markdown("### Estimación de Líneas Cortas")
         if st.session_state.df_lineas is not None:
             col_ev_lineas = next((c for c in st.session_state.df_lineas.columns if "ev" in c.lower()), None)
-            
             if col_ev_lineas:
-                df_lineas_estilado = st.session_state.df_lineas.style \
-                    .set_properties(**propiedades_oscuras) \
-                    .map(colorificar_ev, subset=[col_ev_lineas])
+                df_lineas_estilado = st.session_state.df_lineas.style.set_properties(**propiedades_oscuras).map(colorificar_ev, subset=[col_ev_lineas])
                 st.dataframe(df_lineas_estilado, use_container_width=True, hide_index=True)
             else:
                 st.dataframe(st.session_state.df_lineas.style.set_properties(**propiedades_oscuras), use_container_width=True, hide_index=True)
             
         # ---------------------------------------------------------
-        # ZONA 3: Constructor Dinámico Inteligente (Soporte Córners/Tarjetas)
+        # ZONA 3: MODIFICADA - CALCULADORA DINÁMICA DE EV REAL
         # ---------------------------------------------------------
         st.markdown("### ➕ Panel de Carga al Ticket")
         
-        # Selector de origen para no mezclar las estructuras de las columnas
         origen_seleccionado = st.radio(
             "Selecciona la procedencia del mercado que deseas jugar:",
             ["Mercados Principales (Tabla 1)", "Líneas Cortas / Córners / Tarjetas (Tabla 2)"],
             horizontal=True
         )
         
-        with st.form("add_bet_form_fixed"):
-            df_origen = None
-            col_id = None
-            es_linea_corta = False
-            tiene_columnas_separadas = False
-            direccion = ""
-            
+        # Contenedor premium para la calculadora reactiva
+        with st.container():
             if origen_seleccionado == "Mercados Principales (Tabla 1)" and st.session_state.df_valores is not None:
                 df_origen = st.session_state.df_valores
                 col_id = next((c for c in df_origen.columns if c.lower() in ["mercado", "market", "opción", "opcion"]), df_origen.columns[0])
                 opciones = df_origen[col_id].dropna().unique().tolist()
+                
                 mercado_elegido = st.selectbox("Selecciona el mercado principal:", options=opciones)
                 
+                fila = df_origen[df_origen[col_id] == mercado_elegido].iloc[0]
+                col_cuota_std = next((c for c in df_origen.columns if "cuota" in c.lower() or "odd" in c.lower()), df_origen.columns[0])
+                col_prob_std = next((c for c in df_origen.columns if "prob" in c.lower() or "%" in c.lower()), df_origen.columns[1])
+                
+                try:
+                    cuota_base = float(str(fila[col_cuota_std]).replace('%', '').strip())
+                    prob_base = float(str(fila[col_prob_std]).replace('%', '').strip())
+                    if 0.0 < prob_base <= 1.0: prob_base *= 100.0
+                except:
+                    cuota_base, prob_base = 1.85, 50.0
+                
+                col_c1, col_c2 = st.columns(2)
+                with col_c1:
+                    cuota_real_casa = st.number_input("Cuota Real Vigente en la Casa", min_value=1.01, value=cuota_base, step=0.01, key="input_cuota_p")
+                with col_c2:
+                    ev_dinamico = ((prob_base / 100.0) * cuota_real_casa - 1) * 100
+                    st.metric("EV Real Calculado", f"{ev_dinamico:.2f}%", delta=f"{ev_dinamico:.1f}%", delta_color="normal")
+                
+                if st.button("Asegurar Selección en el Ticket", key="btn_add_p_fixed"):
+                    st.session_state.combinada_actual.append({
+                        "partido": st.session_state.partido_activo,
+                        "mercado": str(mercado_elegido),
+                        "cuota": cuota_real_casa,
+                        "prob_modelo": prob_base,
+                        "ev_individual": ev_dinamico
+                    })
+                    st.success(f"Agregado: {mercado_elegido} @{cuota_real_casa:.2f}")
+                    st.rerun()
+                    
             elif origen_seleccionado == "Líneas Cortas / Córners / Tarjetas (Tabla 2)" and st.session_state.df_lineas is not None:
                 df_origen = st.session_state.df_lineas
                 col_id = next((c for c in df_origen.columns if c.lower() in ["mercado", "market", "línea", "linea", "estadística", "estadistica"]), df_origen.columns[0])
                 opciones = df_origen[col_id].dropna().unique().tolist()
-                mercado_elegido = st.selectbox("Selecciona la línea o estadística:", options=opciones)
                 
-                # Detectar si la tabla tiene formato horizontal (columnas separadas de Más/Menos u Over/Under)
-                columnas_minus = [c.lower() for c in df_origen.columns]
-                tiene_columnas_separadas = any("más" in c or "over" in c or "menos" in c or "under" in c for c in columnas_minus)
+                mercado_elegido = st.selectbox("Selecciona la línea base (Métrica/Línea):", options=opciones)
+                direccion = st.radio("Pronóstico para esta línea:", ["Más / Over", "Menos / Under"], horizontal=True)
                 
-                if tiene_columnas_separadas:
-                    direccion = st.radio("Pronóstico para esta línea:", ["Más / Over", "Menos / Under"], horizontal=True)
-                    es_linea_corta = True
-            else:
-                st.info("Ejecuta los modelos matemáticos cuantitativos para habilitar las opciones.")
-                mercado_elegido = None
-                
-            btn_agregar = st.form_submit_button("Asegurar Selección en el Ticket")
-            
-            if btn_agregar and mercado_elegido and df_origen is not None:
+                # Extraer la probabilidad pura del modelo para la dirección elegida
                 fila = df_origen[df_origen[col_id] == mercado_elegido].iloc[0]
                 columnas_disponibles = df_origen.columns.tolist()
+                variante_col = "más" if "más" in direccion.lower() or "over" in direccion.lower() else "menos"
+                variante_alt = "over" if variante_col == "más" else "under"
                 
-                cuota_f, prob_f, ev_f = 1.00, 0.0, 0.0
-                nombre_mercado_final = str(mercado_elegido)
+                col_prob = next((c for c in columnas_disponibles if ("prob" in c.lower() or "%" in c.lower()) and (variante_col in c.lower() or variante_alt in c.lower())), None)
+                col_cuota = next((c for c in columnas_disponibles if ("cuota" in c.lower() or "odd" in c.lower()) and (variante_col in c.lower() or variante_alt in c.lower())), None)
                 
-                # Extracción optimizada para estructuras horizontales de Córners/Tarjetas
-                if es_linea_corta and tiene_columnas_separadas:
-                    variante_col = "más" if "más" in direccion.lower() or "over" in direccion.lower() else "menos"
-                    variante_alt = "over" if variante_col == "más" else "under"
-                    
-                    col_cuota = next((c for c in columnas_disponibles if ("cuota" in c.lower() or "odd" in c.lower()) and (variante_col in c.lower() or variante_alt in c.lower())), None)
-                    col_prob = next((c for c in columnas_disponibles if ("prob" in c.lower() or "%" in c.lower()) and (variante_col in c.lower() or variante_alt in c.lower())), None)
-                    col_ev = next((c for c in columnas_disponibles if "ev" in c.lower() and (variante_col in c.lower() or variante_alt in c.lower())), None)
-                    
-                    nombre_mercado_final = f"{mercado_elegido} - {direccion}"
-                else:
-                    # Extracción estándar para mercados verticales
-                    col_cuota = next((c for c in columnas_disponibles if "cuota" in c.lower() or "odd" in c.lower()), None)
-                    col_prob = next((c for c in columnas_disponibles if "prob" in c.lower() or "%" in c.lower()), None)
-                    col_ev = next((c for c in columnas_disponibles if "ev" in c.lower()), None)
-                
-                # Parsear y limpiar cadenas de texto o símbolos porcentuales
                 try:
-                    if col_cuota and pd.notna(fila[col_cuota]): 
-                        cuota_f = float(str(fila[col_cuota]).replace('%', '').strip())
-                    if col_prob and pd.notna(fila[col_prob]): 
-                        prob_f = float(str(fila[col_prob]).replace('%', '').strip())
-                    if col_ev and pd.notna(fila[col_ev]): 
-                        ev_f = float(str(fila[col_ev]).replace('%', '').strip())
-                except (ValueError, TypeError):
-                    pass
+                    prob_base = float(str(fila[col_prob]).replace('%', '').strip()) if col_prob else 50.0
+                    if 0.0 < prob_base <= 1.0: prob_base *= 100.0
+                    cuota_base = float(str(fila[col_cuota]).replace('%', '').strip()) if col_cuota else 1.85
+                except:
+                    prob_base = 50.0
+                    cuota_base = 1.85
                 
-                # Escalar la probabilidad en caso de venir en formato fraccionario (0.0 - 1.0)
-                if 0.0 < prob_f <= 1.0:
-                    prob_f *= 100.0
-                    
-                ya_existe = any(b["partido"] == st.session_state.partido_activo and b["mercado"] == nombre_mercado_final for b in st.session_state.combinada_actual)
+                # Campos dinámicos para capturar cuotas reales de la casa de apuestas
+                col_l1, col_l2 = st.columns(2)
+                with col_l1:
+                    cuota_real_casa = st.number_input(f"Cuota de la Casa para {direccion}", min_value=1.01, value=cuota_base, step=0.01, key="input_cuota_l")
+                with col_l2:
+                    # RECALCULO DE EV REAL EN TIEMPO REAL
+                    ev_dinamico = ((prob_base / 100.0) * cuota_real_casa - 1) * 100
+                    st.metric("EV Real Calculado", f"{ev_dinamico:.2f}%", delta=f"{ev_dinamico:.1f}%")
                 
-                if not ya_existe:
-                    st.session_state.combinada_actual.append({
-                        "partido": st.session_state.partido_activo,
-                        "mercado": nombre_mercado_final,
-                        "cuota": cuota_f,
-                        "prob_modelo": prob_f,
-                        "ev_individual": ev_f
-                    })
-                    st.success(f"Agregado con éxito: {nombre_mercado_final}")
-                    st.rerun()
-                else:
-                    st.warning("Esta selección ya se encuentra guardada en el ticket.")
+                nombre_mercado_final = f"{mercado_elegido} - {direccion}"
+                
+                if st.button("Asegurar Selección en el Ticket", key="btn_add_l_fixed"):
+                    ya_existe = any(b["partido"] == st.session_state.partido_activo and b["mercado"] == nombre_mercado_final for b in st.session_state.combinada_actual)
+                    if not ya_existe:
+                        st.session_state.combinada_actual.append({
+                            "partido": st.session_state.partido_activo,
+                            "mercado": nombre_mercado_final,
+                            "cuota": cuota_real_casa,
+                            "prob_modelo": prob_base,
+                            "ev_individual": ev_dinamico
+                        })
+                        st.success(f"Agregado al Ticket: {nombre_mercado_final} @{cuota_real_casa:.2f} (EV: {ev_dinamico:.1f}%)")
+                        st.rerun()
+                    else:
+                        st.warning("Esta selección ya se encuentra guardada en el ticket.")
+            else:
+                st.info("Ejecuta los modelos matemáticos cuantitativos para habilitar el panel de carga.")
 
 if __name__ == "__main__":
     main()
