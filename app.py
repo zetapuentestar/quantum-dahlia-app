@@ -20,8 +20,8 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
     """
     # Enlaces web directos en alta definición (Fútbol de Élite / Copa Mundial)
     imagenes_fondo = {
-        "Simulación Montecarlo (100k)": "https://unsplash.com/es/fotos/grey-concrete-figurine-oW8ph9u07uo
-        "Poisson Bivariado / Dixon-Coles": "https://unsplash.com/es/fotos/grey-concrete-figurine-oW8ph9u07uo
+        "Simulación Montecarlo (100k)": "https://unsplash.com/es/fotos/grey-concrete-figurine-oW8ph9u07uo",
+        "Poisson Bivariado / Dixon-Coles": "https://unsplash.com/es/fotos/grey-concrete-figurine-oW8ph9u07uo"
     }
     
     url_fondo = imagenes_fondo.get(modelo_seleccionado, imagenes_fondo["Simulación Montecarlo (100k)"])
