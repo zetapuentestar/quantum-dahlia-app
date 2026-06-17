@@ -127,9 +127,8 @@ def main():
     with col_t2:
         equipo_2 = st.text_input("Escuadra Visitante", value="Rival")
         stats_e2 = di.get_team_stats(equipo_2)
-        # Cálculo automático de posesión inversa
-        stats_e2["posesion"] = 100.0 - stats_e1["posesion"]
-        st.caption(f"Distribución de Posesión Automática para {equipo_2}: {stats_e2['posesion']}%")
+        # Se eliminó la fórmula de inversión automática para permitir 
+        # que las métricas históricas de ambos equipos sean independientes.
         
     st.markdown("---")
     
