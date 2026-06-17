@@ -15,35 +15,39 @@ st.set_page_config(
 
 def aplicar_estilo_dinamico(modelo_seleccionado):
     """
-    Inyecta CSS avanzado para controlar el fondo dinámico mediante enlaces web,
-    establecer el modo oscuro absoluto y dar un acabado premium.
+    Inyecta CSS avanzado apuntando al contenedor exacto de Streamlit
+    y aplicando un overlay sutil para garantizar la visibilidad de la imagen.
     """
     # Enlaces web directos en alta definición (Fútbol de Élite / Copa Mundial)
     imagenes_fondo = {
-        "Simulación Montecarlo (100k)": "https://in.pinterest.com/pin/726979564881581700/",
-        "Poisson Bivariado / Dixon-Coles": "https://in.pinterest.com/pin/726979564881581700/"
+        "Simulación Montecarlo (100k)": "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=1920",
+        "Poisson Bivariado / Dixon-Coles": "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=1920"
     }
     
     url_fondo = imagenes_fondo.get(modelo_seleccionado, imagenes_fondo["Simulación Montecarlo (100k)"])
     
     css = f"""
     <style>
-    /* Fondo Dinámico con máscara de fusión negra profunda */
-    .stApp {{
-        background-image: url("{url_fondo}");
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-        background-color: #0A0A0C !important;
-        background-blend-mode: multiply;
+    /* Forzar que el contenedor base y sus capas superiores sean transparentes */
+    .stApp, div[data-testid="stAppViewBlockContainer"] {{
+        background-color: transparent !important;
+    }}
+    
+    /* Aplicar el fondo con un filtro oscuro del 85% directamente en el contenedor de la vista */
+    div[data-testid="stAppViewContainer"] {{
+        background: linear-gradient(rgba(10, 10, 12, 0.85), rgba(10, 10, 12, 0.85)), url("{url_fondo}") !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-attachment: fixed !important;
     }}
     
     /* Contenedores de datos semi-transparentes elegantes */
     div[data-testid="stVerticalBlock"] > div {{
-        background-color: rgba(15, 16, 20, 0.75);
-        border-radius: 6px;
-        padding: 15px;
-        border: 1px solid rgba(255, 255, 255, 0.03);
+        background-color: rgba(20, 21, 26, 0.75) !important;
+        border-radius: 8px;
+        padding: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
     }}
     
     /* Tipografía y Títulos Limpios sin emojis */
