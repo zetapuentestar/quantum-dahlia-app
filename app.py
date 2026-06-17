@@ -140,17 +140,27 @@ def main():
     # Botón de Procesamiento
     if st.button("Ejecutar Modelos Cuantitativos"):
         
-        # 1. Ejecución del backend matemático
+        # 1. Ejecución en paralelo del backend matemático
         analisis_analitico = mm.procesar_modelos_matematicos(stats_e1, stats_e2, cuotas_mercado)
         analisis_simulado = sim.ejecutar_montecarlo(stats_e1, stats_e2, n_simulaciones=100000)
         
-        # 2. Generación de DataFrames estructurados desde report.py
-        df_valores = rep.generar_reporte_valores(analisis_simulado, cuotas_mercado)
+        # 2. Enrutamiento inteligente de datos para la Tabla 1
+        if modelo_activo == "Poisson Bivariado / Dixon-Coles":
+            # Estricta precisión matemática para mercados 1X2 y Goles
+            df_valores = rep.generar_reporte_valores(analisis_analitico, cuotas_mercado)
+        else:
+            # Proyección por fuerza bruta para mercados principales
+            df_valores = rep.generar_reporte_valores(analisis_simulado, cuotas_mercado)
+            
+        # 3. La Tabla 2 SIEMPRE se alimenta de Montecarlo para Córners y Tarjetas
         df_lineas = rep.generar_reporte_lineas_asiaticas(analisis_simulado, cuotas_mercado)
         
-        # 3. Renderizado de Reporte 1: Mercados Principales con Estilos Anti-KeyError
-        st.markdown("### Proyección de Valor Esperado")
+        # ==========================================
+        # RENDERIZADO DE LAS TABLAS EN LA INTERFAZ
+        # ==========================================
         
+        # Renderizado de Reporte 1: Mercados Principales
+        st.markdown("### Proyección de Valor Esperado")
         if "EV (%)" in df_valores.columns:
             df_valores_estilado = df_valores.style.map(colorificar_ev, subset=["EV (%)"])
             st.dataframe(df_valores_estilado, use_container_width=True, hide_index=True)
@@ -159,7 +169,7 @@ def main():
             
         st.markdown("---")
         
-        # 4. Renderizado de Reporte 2: Mercados Estadísticos Volátiles (Córners y Tarjetas)
+        # Renderizado de Reporte 2: Mercados Estadísticos Volátiles (Córners y Tarjetas)
         st.markdown("### Estimación de Líneas Cortas")
         st.dataframe(df_lineas, use_container_width=True, hide_index=True)
 
