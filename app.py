@@ -317,10 +317,10 @@ def main():
         # Renderizado de Reporte 1: Mercados Principales
         st.markdown("### Proyección de Valor Esperado")
         if "EV (%)" in st.session_state.df_valores.columns:
-            # Encadenamos la colorificación del EV y aplicamos el fondo oscuro al resto de celdas
+            # CORRECCIÓN: Primero el fondo oscuro global, luego el mapa específico para que no se sobreescriba
             df_valores_estilado = st.session_state.df_valores.style \
-                .map(colorificar_ev, subset=["EV (%)"]) \
-                .set_properties(**propiedades_oscuras)
+                .set_properties(**propiedades_oscuras) \
+                .map(colorificar_ev, subset=["EV (%)"])
             st.dataframe(df_valores_estilado, use_container_width=True, hide_index=True)
         else:
             df_valores_oscuro = st.session_state.df_valores.style.set_properties(**propiedades_oscuras)
