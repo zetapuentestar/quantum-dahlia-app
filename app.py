@@ -146,10 +146,9 @@ def main():
         
         # 2. Enrutamiento inteligente de datos para la Tabla 1
         if modelo_activo == "Poisson Bivariado / Dixon-Coles":
-            # PARCHE DE SEGURIDAD: Si Poisson no incluye métricas de Primer Tiempo (1T),
-            # le inyectamos valores neutros [Local, Empate, Visitante] para que report.py no lance KeyError.
+            # CORRECCIÓN DE TIPO: Inyectamos un diccionario con claves de texto para que report.py mapée correctamente
             if "prob_1x2_1t" not in analisis_analitico:
-                analisis_analitico["prob_1x2_1t"] = [0.0, 0.0, 0.0]
+                analisis_analitico["prob_1x2_1t"] = {"Local": 0.0, "Empate": 0.0, "Visitante": 0.0}
                 
             # Estricta precisión matemática para mercados 1X2 y Goles
             df_valores = rep.generar_reporte_valores(analisis_analitico, cuotas_mercado)
@@ -177,6 +176,5 @@ def main():
         # Renderizado de Reporte 2: Mercados Estadísticos Volátiles (Córners y Tarjetas)
         st.markdown("### Estimación de Líneas Cortas")
         st.dataframe(df_lineas, use_container_width=True, hide_index=True)
-
 if __name__ == "__main__":
     main()
