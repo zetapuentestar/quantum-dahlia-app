@@ -168,13 +168,11 @@ def colorificar_ev(val):
     try:
         val_float = float(val)
         if val_float > 0.0:
-            # Verde oscuro de fondo con texto verde brillante
-            return 'background-color: #1b4332; color: #72efdd; font-weight: bold;'
+            # Fondo dorado oscuro opaco, texto dorado brillante
+            return 'background-color: #2c2001; color: #D4AF37; font-weight: bold;'
         elif val_float < 0.0:
-            # Texto coral/rojo sutil para EV negativo, fondo oscuro explícito
             return 'background-color: #18181b; color: #f07167;'
         else:
-            # EV Neutro (0.0)
             return 'background-color: #18181b; color: #94a3b8;'
     except (ValueError, TypeError):
         return 'background-color: #18181b; color: #94a3b8;'
