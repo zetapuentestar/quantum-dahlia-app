@@ -62,8 +62,27 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
     }}
     
     /* ---------------------------------------------------------
-    /* SOLUCIÓN: Forzar Negro Premium Absoluto en el Sidebar
+    /* AJUSTE DEFINITIVO DE LA BARRA SUPERIOR (HEADER)
     /* --------------------------------------------------------- */
+    header[data-testid="stHeader"], div[data-testid="stHeader"] {{
+        background-color: #0A0A0C !important;
+        background: #0A0A0C !important;
+        height: 45px !important;
+        border-bottom: 1px solid rgba(214, 175, 55, 0.15) !important;
+    }}
+    
+    /* Forzar iconos del header (GitHub, Ajustes, Desplegar) a Blanco Puro */
+    header[data-testid="stHeader"] svg, 
+    div[data-testid="stHeader"] svg,
+    header[data-testid="stHeader"] button,
+    div[data-testid="stHeader"] button,
+    header[data-testid="stHeader"] a,
+    div[data-testid="stHeader"] a {{
+        fill: #FFFFFF !important;
+        color: #FFFFFF !important;
+    }}
+    
+    /* Forzar Negro Premium Absoluto en el Sidebar */
     div[data-testid="stSidebar"], 
     div[data-testid="stSidebarContent"], 
     div[data-testid="stSidebar"] > div {{
@@ -136,11 +155,10 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
         border: 1px solid #D4AF37 !important;
     }}
     
-    /* Ocultar elementos innecesarios de Streamlit sin romper el botón de apertura */
+    /* Ocultar elementos innecesarios */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     div[data-testid="stAppDeployButton"] {{display: none !important;}}
-    div[data-testid="stHeader"] {{background: transparent !important; background-color: transparent !important;}}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
@@ -278,66 +296,4 @@ def main():
         # Almacenar en el estado para persistencia entre clicks del formulario
         st.session_state.df_valores = df_valores
         st.session_state.df_lineas = df_lineas
-        st.session_state.partido_activo = f"{equipo_1} vs {equipo_2}"
-
-    # ==========================================
-    # RENDERIZADO DE LAS TABLAS E INTERACCIÓN
-    # ==========================================
-    if st.session_state.df_valores is not None:
-        st.markdown(f"## Análisis Actual: {st.session_state.partido_activo}")
-        
-        # Renderizado de Reporte 1: Mercados Principales
-        st.markdown("### Proyección de Valor Esperado")
-        if "EV (%)" in st.session_state.df_valores.columns:
-            df_valores_estilado = st.session_state.df_valores.style.map(colorificar_ev, subset=["EV (%)"])
-            st.dataframe(df_valores_estilado, use_container_width=True, hide_index=True)
-        else:
-            st.dataframe(st.session_state.df_valores, use_container_width=True, hide_index=True)
-            
-        st.markdown("---")
-        
-        # Renderizado de Reporte 2: Mercados Estadísticos Volátiles (Córners y Tarjetas)
-        st.markdown("### Estimación de Líneas Cortas")
-        st.dataframe(st.session_state.df_lineas, use_container_width=True, hide_index=True)
-        
-        # ---------------------------------------------------------
-        # ZONA 3: Constructor Dinámico de Combinadas
-        # ---------------------------------------------------------
-        st.markdown("### ➕ Panel de Carga al Ticket")
-        with st.form("add_bet_form"):
-            opciones_mercado = st.session_state.df_valores["Mercado"].tolist()
-            mercado_elegido = st.selectbox("Selecciona el mercado validado para añadir a la combinada:", options=opciones_mercado)
-            
-            btn_agregar = st.form_submit_button("Asegurar Selección en el Ticket")
-            
-            if btn_agregar and mercado_elegido:
-                fila = st.session_state.df_valores[st.session_state.df_valores["Mercado"] == mercado_elegido].iloc[0]
-                
-                # DETECTOR DINÁMICO DE COLUMNAS
-                columnas_disponibles = st.session_state.df_valores.columns.tolist()
-                
-                col_prob = next((c for c in columnas_disponibles if "prob" in c.lower()), None)
-                col_cuota = next((c for c in columnas_disponibles if "cuota" in c.lower() or "odd" in c.lower()), None)
-                col_ev = next((c for c in columnas_disponibles if "ev" in c.lower()), None)
-                
-                if col_prob and col_cuota:
-                    # Evitar duplicados del mismo mercado en el mismo partido
-                    ya_existe = any(b["partido"] == st.session_state.partido_activo and b["mercado"] == mercado_elegido for b in st.session_state.combinada_actual)
-                    
-                    if not ya_existe:
-                        st.session_state.combinada_actual.append({
-                            "partido": st.session_state.partido_activo,
-                            "mercado": mercado_elegido,
-                            "cuota": float(fila[col_cuota]),
-                            "prob_modelo": float(fila[col_prob]),
-                            "ev_individual": float(fila[col_ev]) if col_ev else 0.0
-                        })
-                        st.success(f"Agregado con éxito: {mercado_elegido}")
-                        st.rerun()
-                    else:
-                        st.warning("Esta selección ya se encuentra en el ticket.")
-                else:
-                    st.error(f"Error de Estructura: Columnas detectadas: {columnas_disponibles}")
-
-if __name__ == "__main__":
-    main()
+        st.session_state.partido_activo = f"{equipo
