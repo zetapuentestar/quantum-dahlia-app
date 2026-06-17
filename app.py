@@ -146,9 +146,14 @@ def main():
         
         # 2. Enrutamiento inteligente de datos para la Tabla 1
         if modelo_activo == "Poisson Bivariado / Dixon-Coles":
-            # CORRECCIÓN DE TIPO: Inyectamos un diccionario con claves de texto para que report.py mapée correctamente
+            # PARCHE DEFINITIVO: Mapeamos tanto 'Visita' como 'Visitante' para acoplarse a report.py
             if "prob_1x2_1t" not in analisis_analitico:
-                analisis_analitico["prob_1x2_1t"] = {"Local": 0.0, "Empate": 0.0, "Visitante": 0.0}
+                analisis_analitico["prob_1x2_1t"] = {
+                    "Local": 0.0, 
+                    "Empate": 0.0, 
+                    "Visita": 0.0, 
+                    "Visitante": 0.0
+                }
                 
             # Estricta precisión matemática para mercados 1X2 y Goles
             df_valores = rep.generar_reporte_valores(analisis_analitico, cuotas_mercado)
