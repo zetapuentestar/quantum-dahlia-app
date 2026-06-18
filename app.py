@@ -12,12 +12,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-def calcular_stake_kelly(prob_combinada, cuota_total, banca_total, fraccion_kelly=0.25):
+# ---------------------------------------------------------
+# NUEVO: Lógica de Kelly Adaptada para Bancas Pequeñas
+# ---------------------------------------------------------
+def calcular_stake_kelly_adaptado(prob_combinada, cuota_total, banca_total, fraccion_kelly=0.25, min_apuesta_casa=1.0):
     """
-    Calcula el dinero exacto a apostar basado en el Criterio de Kelly Fraccionado.
+    Calcula el dinero exacto a apostar basado en Kelly, adaptado a las restricciones
+    de una banca pequeña y montos mínimos de apuesta de la casa.
     """
     if cuota_total <= 1 or prob_combinada <= 0:
-        return 0.0, 0.0
+        return 0.0, 0.0, "Sin Valor"
         
     b = cuota_total - 1  # Cuota neta
     p = prob_combinada
@@ -27,12 +31,21 @@ def calcular_stake_kelly(prob_combinada, cuota_total, banca_total, fraccion_kell
     f_star = (b * p - q) / b
     
     if f_star <= 0:
-        return 0.0, 0.0
+        return 0.0, 0.0, "EV Negativo"
         
     porcentaje_apuesta = f_star * fraccion_kelly
-    dinero_a_apostar = banca_total * porcentaje_apuesta
+    dinero_sugerido_puro = banca_total * porcentaje_apuesta
     
-    return porcentaje_apuesta * 100, dinero_a_apostar
+    # Control del límite mínimo de la casa ($1)
+    if dinero_sugerido_puro < min_apuesta_casa:
+        # El EV es positivo pero el capital recomendado es muy bajo
+        return porcentaje_apuesta * 100, dinero_sugerido_puro, "Bajo Umbral"
+        
+    # Redondeo limpio a múltiplos de 0.50 para facilitar la ejecución manual
+    dinero_redondeado = round(dinero_sugerido_puro * 2) / 2
+    porcentaje_ajustado = (dinero_redondeado / banca_total) * 100
+    
+    return porcentaje_ajustado, dinero_redondeado, "Óptimo"
 
 def aplicar_estilo_dinamico(modelo_seleccionado):
     """
@@ -48,114 +61,40 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
     
     css = f"""
     <style>
-    .stApp, div[data-testid="stAppViewBlockContainer"] {{
-        background-color: transparent !important;
-    }}
-    
+    .stApp, div[data-testid="stAppViewBlockContainer"] {{ background-color: transparent !important; }}
     div[data-testid="stAppViewContainer"] {{
         background: linear-gradient(rgba(10, 10, 12, 0.85), rgba(10, 10, 12, 0.85)), url("{url_fondo}") !important;
-        background-size: cover !important;
-        background-position: center !important;
-        background-attachment: fixed !important;
+        background-size: cover !important; background-position: center !important; background-attachment: fixed !important;
     }}
-    
     header[data-testid="stHeader"], div[data-testid="stHeader"] {{
-        background-color: #0A0A0C !important;
-        background: #0A0A0C !important;
-        height: 45px !important;
-        border-bottom: 1px solid rgba(214, 175, 55, 0.15) !important;
+        background-color: #0A0A0C !important; background: #0A0A0C !important; height: 45px !important; border-bottom: 1px solid rgba(214, 175, 55, 0.15) !important;
     }}
-    
-    header[data-testid="stHeader"] svg, 
-    div[data-testid="stHeader"] svg,
-    header[data-testid="stHeader"] button,
-    div[data-testid="stHeader"] button,
-    header[data-testid="stHeader"] a,
-    div[data-testid="stHeader"] a {{
-        fill: #FFFFFF !important;
-        color: #FFFFFF !important;
+    header[data-testid="stHeader"] svg, div[data-testid="stHeader"] svg, header[data-testid="stHeader"] button, div[data-testid="stHeader"] button, header[data-testid="stHeader"] a, div[data-testid="stHeader"] a {{
+        fill: #FFFFFF !important; color: #FFFFFF !important;
     }}
-    
-    div[data-testid="stSidebar"], 
-    div[data-testid="stSidebarContent"], 
-    div[data-testid="stSidebar"] > div {{
-        background-color: #0A0A0C !important;
-        background: #0A0A0C !important;
-        border-right: 1px solid rgba(214, 175, 55, 0.25) !important;
+    div[data-testid="stSidebar"], div[data-testid="stSidebarContent"], div[data-testid="stSidebar"] > div {{
+        background-color: #0A0A0C !important; background: #0A0A0C !important; border-right: 1px solid rgba(214, 175, 55, 0.25) !important;
     }}
-    
-    div[data-testid="stSidebar"] h1, 
-    div[data-testid="stSidebar"] h2, 
-    div[data-testid="stSidebar"] h3, 
-    div[data-testid="stSidebar"] p, 
-    div[data-testid="stSidebar"] label, 
-    div[data-testid="stSidebar"] span,
-    div[data-testid="stSidebar"] small,
-    div[data-testid="stSidebar"] div {{
-        color: #FFFFFF !important;
-        font-family: 'Inter', -apple-system, sans-serif !important;
+    div[data-testid="stSidebar"] h1, div[data-testid="stSidebar"] h2, div[data-testid="stSidebar"] h3, div[data-testid="stSidebar"] p, div[data-testid="stSidebar"] label, div[data-testid="stSidebar"] span, div[data-testid="stSidebar"] small, div[data-testid="stSidebar"] div {{
+        color: #FFFFFF !important; font-family: 'Inter', -apple-system, sans-serif !important;
     }}
-    
-    div[data-testid="stSidebar"] div[data-testid="stMetricValue"] div,
-    div[data-testid="stSidebar"] div[data-testid="stMetricValue"] span {{
-        color: #D4AF37 !important;
-        font-weight: 700 !important;
+    div[data-testid="stSidebar"] div[data-testid="stMetricValue"] div, div[data-testid="stSidebar"] div[data-testid="stMetricValue"] span {{
+        color: #D4AF37 !important; font-weight: 700 !important;
     }}
-    
-    div[data-testid="stSidebar"] div.stNumberInput, 
-    div[data-testid="stSidebar"] div.stSlider {{
-        border: 1px solid rgba(214, 175, 55, 0.2) !important;
-        background-color: rgba(18, 19, 22, 0.9) !important;
-        padding: 12px !important;
-        border-radius: 4px !important;
-        margin-bottom: 10px;
+    div[data-testid="stSidebar"] div.stNumberInput, div[data-testid="stSidebar"] div.stSlider {{
+        border: 1px solid rgba(214, 175, 55, 0.2) !important; background-color: rgba(18, 19, 22, 0.9) !important; padding: 12px !important; border-radius: 4px !important; margin-bottom: 10px;
     }}
-    
-    h1, h2, h3, p, label, span {{
-        color: #FFFFFF !important;
-        font-family: 'Inter', -apple-system, sans-serif !important;
-    }}
-    
-    h1 {{
-        font-weight: 700 !important;
-        letter-spacing: -0.05em;
-        border-bottom: 1px solid rgba(214, 175, 55, 0.3);
-        padding-bottom: 10px;
-    }}
-    
+    h1, h2, h3, p, label, span {{ color: #FFFFFF !important; font-family: 'Inter', -apple-system, sans-serif !important; }}
+    h1 {{ font-weight: 700 !important; letter-spacing: -0.05em; border-bottom: 1px solid rgba(214, 175, 55, 0.3); padding-bottom: 10px; }}
     .stButton>button, div[data-testid="stSidebar"] .stButton>button {{
-        background-color: #121316 !important;
-        color: #D4AF37 !important;
-        border: 1px solid #D4AF37 !important;
-        border-radius: 4px !important;
-        width: 100%;
-        font-weight: 600;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        padding: 14px 0px;
-        transition: all 0.4s ease;
+        background-color: #121316 !important; color: #D4AF37 !important; border: 1px solid #D4AF37 !important; border-radius: 4px !important; width: 100%; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 14px 0px; transition: all 0.4s ease;
     }}
-    
     .stButton>button:hover, div[data-testid="stSidebar"] .stButton>button:hover {{
-        background-color: #D4AF37 !important;
-        color: #0A0A0C !important;
-        box-shadow: 0px 0px 25px rgba(214, 175, 55, 0.4);
-        border: 1px solid #D4AF37 !important;
+        background-color: #D4AF37 !important; color: #0A0A0C !important; box-shadow: 0px 0px 25px rgba(214, 175, 55, 0.4); border: 1px solid #D4AF37 !important;
     }}
-    
-    div.stSelectbox div[data-baseweb="select"] {{
-        background-color: rgba(18, 19, 22, 0.9) !important;
-        border: 1px solid rgba(214, 175, 55, 0.2) !important;
-    }}
-    
-    div.stNumberInput input {{
-        background-color: rgba(18, 19, 22, 0.9) !important;
-        color: #FFFFFF !important;
-    }}
-    
-    #MainMenu {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    div[data-testid="stAppDeployButton"] {{display: none !important;}}
+    div.stSelectbox div[data-baseweb="select"] {{ background-color: rgba(18, 19, 22, 0.9) !important; border: 1px solid rgba(214, 175, 55, 0.2) !important; }}
+    div.stNumberInput input {{ background-color: rgba(18, 19, 22, 0.9) !important; color: #FFFFFF !important; }}
+    #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} div[data-testid="stAppDeployButton"] {{display: none !important;}}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
@@ -163,12 +102,9 @@ def aplicar_estilo_dinamico(modelo_seleccionado):
 def colorificar_ev(val):
     try:
         val_float = float(val)
-        if val_float > 0.0:
-            return 'background-color: #2c2001; color: #D4AF37; font-weight: bold;'
-        elif val_float < 0.0:
-            return 'background-color: #121316; color: #f07167;'
-        else:
-            return 'background-color: #121316; color: #94a3b8;'
+        if val_float > 0.0: return 'background-color: #2c2001; color: #D4AF37; font-weight: bold;'
+        elif val_float < 0.0: return 'background-color: #121316; color: #f07167;'
+        else: return 'background-color: #121316; color: #94a3b8;'
     except (ValueError, TypeError):
         return 'background-color: #121316; color: #94a3b8;'
 
@@ -176,14 +112,10 @@ def main():
     # ---------------------------------------------------------
     # ZONA 1: Inicialización del Estado de la Sesión
     # ---------------------------------------------------------
-    if "combinada_actual" not in st.session_state:
-        st.session_state.combinada_actual = []
-    if "df_valores" not in st.session_state:
-        st.session_state.df_valores = None
-    if "df_lineas" not in st.session_state:
-        st.session_state.df_lineas = None
-    if "partido_activo" not in st.session_state:
-        st.session_state.partido_activo = ""
+    if "combinada_actual" not in st.session_state: st.session_state.combinada_actual = []
+    if "df_valores" not in st.session_state: st.session_state.df_valores = None
+    if "df_lineas" not in st.session_state: st.session_state.df_lineas = None
+    if "partido_activo" not in st.session_state: st.session_state.partido_activo = ""
 
     st.title("QUANTUM DAHLIA SPORTS INVESTMENTS")
     
@@ -199,7 +131,8 @@ def main():
     # ---------------------------------------------------------
     st.sidebar.markdown("## 📋 Ticket de la Sociedad")
     
-    if st.sidebar.button("Vaciar Ticket"):
+    # Botón global para vaciar todo sigue disponible pero menos intrusivo
+    if st.sidebar.button("Vaciar Todo el Ticket"):
         st.session_state.combinada_actual = []
         st.rerun()
         
@@ -208,14 +141,24 @@ def main():
     contiene_trampa = False
     
     if st.session_state.combinada_actual:
-        for bet in st.session_state.combinada_actual:
-            alerta = "⚠️" if bet['ev_individual'] < -3.0 else "🔹"
-            if bet['ev_individual'] < -3.0:
-                contiene_trampa = True
+        # NUEVO: Loop con enumerate para poder eliminar fila por fila
+        for i, bet in enumerate(st.session_state.combinada_actual):
+            col_info, col_btn = st.sidebar.columns([4, 1])
+            
+            with col_info:
+                alerta = "⚠️" if bet['ev_individual'] < -3.0 else "🔹"
+                if bet['ev_individual'] < -3.0: contiene_trampa = True
                 
-            st.sidebar.write(f"{alerta} **{bet['partido']}**")
-            st.sidebar.write(f"   _{bet['mercado']}_")
-            st.sidebar.write(f"   Cuota: {bet['cuota']:.2f} | EV: {bet['ev_individual']:.1f}%")
+                st.write(f"{alerta} **{bet['partido']}**")
+                st.write(f"   _{bet['mercado']}_")
+                st.write(f"   Cuota: {bet['cuota']:.2f} | EV: {bet['ev_individual']:.1f}%")
+                
+            with col_btn:
+                # Botón de eliminación individual
+                if st.button("❌", key=f"remover_{i}"):
+                    st.session_state.combinada_actual.pop(i)
+                    st.rerun()
+                    
             st.sidebar.markdown("---")
             
             cuota_acumulada *= bet['cuota']
@@ -237,12 +180,20 @@ def main():
         banca_total = st.sidebar.number_input("Banca Común ($)", min_value=1.0, value=25.0, step=1.0)
         fraccion_k = st.sidebar.slider("Fracción de Seguridad", min_value=0.05, max_value=1.0, value=0.25, step=0.05)
         
-        pct_banca, dinero_stake = calcular_stake_kelly(prob_acumulada, cuota_acumulada, banca_total, fraccion_k)
+        # NUEVO: Implementación de la función adaptada a la banca pequeña
+        pct_banca, dinero_stake, estado_kelly = calcular_stake_kelly_adaptado(
+            prob_acumulada, cuota_acumulada, banca_total, fraccion_k, min_apuesta_casa=1.0
+        )
         
-        if dinero_stake > 0:
-            st.sidebar.metric(label="Inversión Sugerida", value=f"${dinero_stake:.2f}", delta=f"{pct_banca:.1f}% de banca")
+        if estado_kelly == "Óptimo":
+            st.sidebar.metric(label="Monto Exacto a Apostar", value=f"${dinero_stake:.2f}", delta=f"{pct_banca:.1f}% de la banca")
+        elif estado_kelly == "Bajo Umbral":
+            st.sidebar.warning(f"Matemáticamente la inversión sugerida es de ${dinero_stake:.2f} (menor al límite de la casa).")
+            # Alternativa para tomar la decisión en grupo
+            pct_minimo = (1.0 / banca_total) * 100
+            st.sidebar.info(f"Si deciden jugar el mínimo de la casa ($1.00), estarán arriesgando el **{pct_minimo:.1f}%** de la banca total.")
         else:
-            st.sidebar.info("Kelly recomienda: No arriesgar capital en esta combinación.")
+            st.sidebar.info("El modelo recomienda NO arriesgar capital (Sin valor matemático conjunto).")
     else:
         st.sidebar.info("Analiza un partido en el panel central para comenzar a estructurar tu ticket.")
 
@@ -314,7 +265,7 @@ def main():
         # ---------------------------------------------------------
         # ZONA 3: PANEL DE CARGA LIMPIO AL TICKET
         # ---------------------------------------------------------
-        st.markdown("###  Panel de Carga al Ticket")
+        st.markdown("### ➕ Panel de Carga al Ticket")
         
         origen_seleccionado = st.radio(
             "Selecciona la procedencia del mercado que deseas jugar:",
