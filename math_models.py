@@ -31,9 +31,9 @@ def actualizar_lambdas_bayesiano(stats_local, stats_visita, cuotas_mercado, alph
     """
     [Modelo Bayesiano]
     Combina las estadísticas manuales del usuario con el consenso del mercado.
-    alpha: Peso dado a las estadísticas del usuario (0.0 a 1.0).
+    alpha: Peso dado a las estadísticas del usuario frente a la Bookie (0.0 a 1.0).
     """
-    # 1. Obtener la expectativa total del mercado (Prior)
+    # 1. Obtener la expectativa total del mercado (Prior de la Casa de Apuestas)
     c_g25 = cuotas_mercado["goles_2_5"]
     lambda_mercado_total = derivar_lambdas_del_mercado(c_g25[0], c_g25[1])
     
@@ -41,11 +41,19 @@ def actualizar_lambdas_bayesiano(stats_local, stats_visita, cuotas_mercado, alph
     lambda_m_local = lambda_mercado_total * 0.55
     lambda_m_visita = lambda_mercado_total * 0.45
     
-    # 2. Datos del usuario (Likelihood)
-    lambda_u_local = float(stats_local["goles_pp"])
-    lambda_u_visita = float(stats_visita["goles_pp"])
+    # 2. Datos del usuario (Likelihood) - INTEGRACIÓN DEL xG RECIENTE
+    # Extraemos el histórico y el xG (si no hay xG, usa el histórico como respaldo de seguridad)
+    goles_hist_local = float(stats_local.get("goles_pp", 1.0))
+    xg_rec_local = float(stats_local.get("xg_reciente", goles_hist_local))
     
-    # 3. Cálculo de la distribución Posterior
+    goles_hist_visita = float(stats_visita.get("goles_pp", 1.0))
+    xg_rec_visita = float(stats_visita.get("xg_reciente", goles_hist_visita))
+    
+    # Aplicamos la Ponderación: 60% Historia vs 40% Realidad del Último Partido
+    lambda_u_local = (goles_hist_local * 0.60) + (xg_rec_local * 0.40)
+    lambda_u_visita = (goles_hist_visita * 0.60) + (xg_rec_visita * 0.40)
+    
+    # 3. Cálculo de la distribución Posterior (Fusión de tu modelo ajustado con la Bookie)
     lambda_final_local = (alpha * lambda_u_local) + ((1 - alpha) * lambda_m_local)
     lambda_final_visita = (alpha * lambda_u_visita) + ((1 - alpha) * lambda_m_visita)
     
