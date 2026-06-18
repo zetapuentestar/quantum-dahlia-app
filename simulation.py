@@ -7,22 +7,27 @@ def ejecutar_montecarlo(stats_local, stats_visita, n_simulaciones=100000):
     Ejecuta una simulación de Montecarlo basada en las esperanzas matemáticas (lambdas)
     de cada equipo para predecir goles, goles en el 1T, córners y tarjetas.
     """
-    # 1. Extraer los Lambdas (valores esperados con decimales)
-    # Goles Partido Completo
-    lambda_goles_l = float(stats_local["goles_pp"])
-    lambda_goles_v = float(stats_visita["goles_pp"])
+    # 1. Extraer los Lambdas y aplicar Ponderación de xG Reciente
+    # Goles Partido Completo (Ponderado: 60% Histórico + 40% xG Último Partido)
+    goles_hist_l = float(stats_local.get("goles_pp", 1.0))
+    xg_rec_l = float(stats_local.get("xg_reciente", goles_hist_l))
+    lambda_goles_l = (goles_hist_l * 0.60) + (xg_rec_l * 0.40)
+    
+    goles_hist_v = float(stats_visita.get("goles_pp", 1.0))
+    xg_rec_v = float(stats_visita.get("xg_reciente", goles_hist_v))
+    lambda_goles_v = (goles_hist_v * 0.60) + (xg_rec_v * 0.40)
     
     # Goles Primera Mitad (HT)
-    lambda_goles_1t_l = float(stats_local["goles_1t"])
-    lambda_goles_1t_v = float(stats_visita["goles_1t"])
+    lambda_goles_1t_l = float(stats_local.get("goles_1t", 0.5))
+    lambda_goles_1t_v = float(stats_visita.get("goles_1t", 0.5))
     
     # Córners
-    lambda_corners_l = float(stats_local["corners"])
-    lambda_corners_v = float(stats_visita["corners"])
+    lambda_corners_l = float(stats_local.get("corners", 4.5))
+    lambda_corners_v = float(stats_visita.get("corners", 4.5))
     
     # Tarjetas
-    lambda_tarjetas_l = float(stats_local["tarjetas"])
-    lambda_tarjetas_v = float(stats_visita["tarjetas"])
+    lambda_tarjetas_l = float(stats_local.get("tarjetas", 2.0))
+    lambda_tarjetas_v = float(stats_visita.get("tarjetas", 2.0))
 
     # 2. Generar muestreos aleatorios masivos (Vectores de Poisson)
     # Goles en el partido completo
