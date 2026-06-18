@@ -198,16 +198,24 @@ def main():
         st.sidebar.info("Analiza un partido en el panel central para comenzar a estructurar tu ticket.")
 
     # Parámetros de Rendimiento de Equipos
-    st.markdown("### Parámetros de Rendimiento")
+    st.markdown("### Parámetros de Rendimiento y Contexto Reciente")
     col_t1, col_t2 = st.columns(2)
     
     with col_t1:
         equipo_1 = st.text_input("Escuadra Local", value="Paris Saint-Germain")
+        xg_e1 = st.number_input(f"xG Último Partido ({equipo_1})", min_value=0.00, value=1.50, step=0.10)
         stats_e1 = di.get_team_stats(equipo_1)
+        # Inyectamos el xG directamente al diccionario de estadísticas del equipo
+        if stats_e1 is not None:
+            stats_e1['xg_reciente'] = xg_e1
         
     with col_t2:
         equipo_2 = st.text_input("Escuadra Visitante", value="Barcelona")
+        xg_e2 = st.number_input(f"xG Último Partido ({equipo_2})", min_value=0.00, value=1.50, step=0.10)
         stats_e2 = di.get_team_stats(equipo_2)
+        # Inyectamos el xG directamente al diccionario de estadísticas del equipo
+        if stats_e2 is not None:
+            stats_e2['xg_reciente'] = xg_e2
         
     st.markdown("---")
     
