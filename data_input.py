@@ -6,18 +6,23 @@ def render_db_uploader():
     archivo = st.sidebar.file_uploader("Sube tu Matriz (CSV/Excel)", type=["csv", "xlsx"], key="db_uploader")
     if archivo:
         try:
-            # Leemos el archivo interpretando la primera fila como encabezado de columnas
+            # sep=None hace que Python detecte automáticamente si es coma o punto y coma
             if archivo.name.endswith('.csv'):
-                df = pd.read_csv(archivo)
+                df = pd.read_csv(archivo, sep=None, engine='python', encoding='utf-8-sig')
             else:
                 df = pd.read_excel(archivo)
             
-            # Limpiamos espacios en blanco en los nombres de las columnas y los pasamos a minúsculas
+            # Limpiamos espacios y pasamos a minúsculas
             df.columns = [str(c).strip().lower() for c in df.columns]
             st.session_state.db_matriz = df
             st.sidebar.success("✅ Base de datos indexada correctamente.")
+            
+            # 👇 HERRAMIENTA DE DIAGNÓSTICO: Te mostrará los nombres de las columnas
+            with st.sidebar.expander("🔍 Ver columnas detectadas"):
+                st.write(df.columns.tolist())
+                
         except Exception as e:
-            st.sidebar.error(f"Error al cargar: {e}")
+            st.sidebar.error(f"Error al cargar el archivo: {e}")
 
 def get_team_stats(team_name):
     # Valores por defecto por si el equipo no está en el Excel
