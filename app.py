@@ -93,7 +93,7 @@ def main():
     modelo_activo = st.selectbox("Arquitectura de Simulación Activa", ["Simulación Montecarlo (100k)", "Poisson Bivariado / Dixon-Coles"])
     aplicar_estilo_dinamico(modelo_activo)
     
-    st.sidebar.markdown("## 📋 Ticket de la Sociedad")
+    st.sidebar.markdown("##  Ticket de la Sociedad")
     if st.sidebar.button("Vaciar Todo el Ticket"):
         st.session_state.combinada_actual = []
         st.rerun()
@@ -123,10 +123,10 @@ def main():
         ev_combinado = (prob_acumulada * cuota_acumulada) - 1
         
         if contiene_trampa: st.sidebar.warning("¡Cuidado! El ticket incluye selecciones con EV Negativo.")
-        if ev_combinado > 0: st.sidebar.success(f"📈 EV Combinado: +{ev_combinado*100:.1f}%")
-        else: st.sidebar.error(f"📉 EV Combinado: {ev_combinado*100:.1f}%")
+        if ev_combinado > 0: st.sidebar.success(f" EV Combinado: +{ev_combinado*100:.1f}%")
+        else: st.sidebar.error(f" EV Combinado: {ev_combinado*100:.1f}%")
             
-        st.sidebar.markdown("### 💰 Gestión de Banca (Kelly)")
+        st.sidebar.markdown("###  Gestión de Banca (Kelly)")
         banca_total = st.sidebar.number_input("Banca Común ($)", min_value=1.0, value=25.0, step=1.0)
         fraccion_k = st.sidebar.slider("Fracción de Seguridad", min_value=0.05, max_value=1.0, value=0.25, step=0.05)
         
@@ -211,7 +211,7 @@ def main():
         # NUEVO: PANEL DE MARCADORES EXACTOS
         # ---------------------------------------------------------
         if st.session_state.marcadores_top:
-            st.markdown("### 🎯 Proyección de Marcador Exacto (Poisson / Dixon-Coles)")
+            st.markdown("###  Proyección de Marcador Exacto (Poisson / Dixon-Coles)")
             col_m1, col_m2, col_m3 = st.columns(3)
             
             with col_m1:
@@ -242,7 +242,7 @@ def main():
             else:
                 st.dataframe(st.session_state.df_lineas.style.set_properties(**propiedades_oscuras), use_container_width=True, hide_index=True)
             
-        st.markdown("### ➕ Panel de Carga al Ticket")
+        st.markdown("###  Panel de Carga al Ticket")
         origen_seleccionado = st.radio("Selecciona la procedencia del mercado que deseas jugar:", ["Mercados Principales (Tabla 1)", "Líneas Cortas / Córners / Tarjetas (Tabla 2)"], horizontal=True)
         
         with st.form("add_bet_form_clean"):
