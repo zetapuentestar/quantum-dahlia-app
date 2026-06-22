@@ -95,3 +95,4 @@ def get_market_odds():
         "goles_1_5": [c_o15, c_u15],
         "1t": [c_1t1, c_1t2],
         "lineas": {"corners": linea_cor, "tarjetas": linea_tar}
+    }
