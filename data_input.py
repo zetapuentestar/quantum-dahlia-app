@@ -12,40 +12,50 @@ def render_db_uploader():
                 st.session_state.db_matriz = pd.read_excel(archivo, header=None)
             st.sidebar.success("✅ Estructura plana cargada.")
         except Exception as e:
-            st.sidebar.error(f"Error: {e}")
+            st.sidebar.error(f"Error al cargar el archivo: {e}")
 
 def get_team_stats(team_name):
+    # Valores por defecto para evitar errores de cálculo
     stats = {"posesion": 50.0, "goles_favor": 1.5, "goles_contra": 1.0, "tiros": 10.0, 
              "puerta": 4.0, "atajadas": 0.0, "corners": 4.0, "tarjetas": 0.0, "xg": 1.3, "goles_1t": 0.5}
 
     if "db_matriz" in st.session_state and st.session_state.db_matriz is not None:
         df = st.session_state.db_matriz
         found_idx = None
+        # Búsqueda del equipo
         for idx in range(len(df)):
-            if any(team_name.upper() in str(cell).upper() for cell in df.iloc[idx]):
+            if any(str(team_name).upper() in str(cell).upper() for cell in df.iloc[idx]):
                 found_idx = idx
                 break
         
         if found_idx is not None:
-            for i in range(found_idx + 1, found_idx + 15):
-                if i >= len(df): break
+            # Escaneo de las filas siguientes para extraer métricas
+            for i in range(found_idx + 1, min(found_idx + 16, len(df))):
                 row = df.iloc[i]
+                # row[4] es la columna 'Ponderado' (índice 4 en base 0)
+                val_raw = row[4]
                 row_str = " ".join([str(c) for c in row if pd.notna(c)]).lower()
-                val = row[4] 
-                if pd.isna(val): continue
                 
-                try:
-                    if "posesion" in row_str: stats["posesion"] = float(val)
-                    elif "goles a favor" in row_str: stats["goles_favor"] = float(val)
-                    elif "goles en contra" in row_str: stats["goles_contra"] = float(val)
-                    elif "tiros totales" in row_str: stats["tiros"] = float(val)
-                    elif "tiros a puerta" in row_str: stats["puerta"] = float(val)
-                    elif "atajadas" in row_str: stats["atajadas"] = float(val)
-                    elif "corners" in row_str: stats["corners"] = float(val)
-                    elif "tarjetas" in row_str: stats["tarjetas"] = float(val)
-                    elif "esperados" in row_str: stats["xg"] = float(val)
-                    elif "goles 1t" in row_str: stats["goles_1t"] = float(val)
-                except: continue
+                # Función de seguridad para convertir a float
+                def to_float(val):
+                    try:
+                        return float(val)
+                    except (ValueError, TypeError):
+                        return None
+
+                valor_limpio = to_float(val_raw)
+                if valor_limpio is None: continue
+                
+                if "posesion" in row_str: stats["posesion"] = valor_limpio
+                elif "goles a favor" in row_str: stats["goles_favor"] = valor_limpio
+                elif "goles en contra" in row_str: stats["goles_contra"] = valor_limpio
+                elif "tiros totales" in row_str: stats["tiros"] = valor_limpio
+                elif "tiros a puerta" in row_str: stats["puerta"] = valor_limpio
+                elif "atajadas" in row_str: stats["atajadas"] = valor_limpio
+                elif "corners" in row_str: stats["corners"] = valor_limpio
+                elif "tarjetas" in row_str: stats["tarjetas"] = valor_limpio
+                elif "esperados" in row_str: stats["xg"] = valor_limpio
+                elif "goles 1t" in row_str: stats["goles_1t"] = valor_limpio
 
     st.subheader(f"📊 Estadísticas: {team_name}")
     col1, col2 = st.columns(2)
