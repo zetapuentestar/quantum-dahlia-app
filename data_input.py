@@ -24,7 +24,7 @@ def get_team_stats(team_name):
     Recolecta las estadísticas base de un equipo.
     Si la matriz está cargada, busca al país y autocompleta con ponderaciones 60/40.
     """
-    st.subheader(f"📊 Estadísticas: {team_name}")
+    st.subheader(f" Estadísticas: {team_name}")
     
     # 1. Valores por defecto (se usarán si el país no está en el Excel)
     val_goles_pp = 1.5
@@ -106,7 +106,7 @@ def get_market_odds():
     """
     Recolecta las cuotas de las casas de apuestas.
     """
-    st.subheader("🏦 Cuotas del Mercado (Bookies)")
+    st.subheader(" Cuotas del Mercado (Bookies)")
     
     col1, col2, col3 = st.columns(3)
     
