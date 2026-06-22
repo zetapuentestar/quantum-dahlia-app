@@ -88,11 +88,14 @@ def get_market_odds():
     with c3:
         linea_cor = st.number_input("Línea Corners", value=9.5, step=0.5)
         linea_tar = st.number_input("Línea Tarjetas", value=3.5, step=0.5)
+        # 👇 AGREGAMOS ESTO AQUÍ
+        c_btts_si = st.number_input("Ambos Anotan (Sí)", value=1.80, step=0.05) 
     
     return {
         "1x2": [c_1, c_x, c_2],
         "goles_2_5": [c_o25, c_u25],
         "goles_1_5": [c_o15, c_u15],
         "1t": [c_1t1, c_1t2],
-        "lineas": {"corners": linea_cor, "tarjetas": linea_tar}
+        "lineas": {"corners": linea_cor, "tarjetas": linea_tar},
+        "btts_si": c_btts_si # 👇 Y LO AGREGAMOS AL DICCIONARIO
     }
