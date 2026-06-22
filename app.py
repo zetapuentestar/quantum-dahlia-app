@@ -85,7 +85,6 @@ def main():
     if "df_valores" not in st.session_state: st.session_state.df_valores = None
     if "df_lineas" not in st.session_state: st.session_state.df_lineas = None
     if "partido_activo" not in st.session_state: st.session_state.partido_activo = ""
-    # NUEVO: Estado para guardar los marcadores
     if "marcadores_top" not in st.session_state: st.session_state.marcadores_top = None
 
     st.title("QUANTUM DAHLIA SPORTS INVESTMENTS")
@@ -93,7 +92,11 @@ def main():
     modelo_activo = st.selectbox("Arquitectura de Simulación Activa", ["Simulación Montecarlo (100k)", "Poisson Bivariado / Dixon-Coles"])
     aplicar_estilo_dinamico(modelo_activo)
     
-    st.sidebar.markdown("##  Ticket de la Sociedad")
+    st.sidebar.markdown("## 📋 Ticket de la Sociedad")
+    
+    # Renderizado del Cargador de Base de Datos
+    di.render_db_uploader()
+    
     if st.sidebar.button("Vaciar Todo el Ticket"):
         st.session_state.combinada_actual = []
         st.rerun()
@@ -109,8 +112,8 @@ def main():
                 alerta = "⚠️" if bet['ev_individual'] < -3.0 else "🔹"
                 if bet['ev_individual'] < -3.0: contiene_trampa = True
                 st.write(f"{alerta} **{bet['partido']}**")
-                st.write(f"   _{bet['mercado']}_")
-                st.write(f"   Cuota: {bet['cuota']:.2f} | EV: {bet['ev_individual']:.1f}%")
+                st.write(f"  _{bet['mercado']}_")
+                st.write(f"  Cuota: {bet['cuota']:.2f} | EV: {bet['ev_individual']:.1f}%")
             with col_btn:
                 if st.button("❌", key=f"remover_{i}"):
                     st.session_state.combinada_actual.pop(i)
@@ -123,10 +126,10 @@ def main():
         ev_combinado = (prob_acumulada * cuota_acumulada) - 1
         
         if contiene_trampa: st.sidebar.warning("¡Cuidado! El ticket incluye selecciones con EV Negativo.")
-        if ev_combinado > 0: st.sidebar.success(f" EV Combinado: +{ev_combinado*100:.1f}%")
-        else: st.sidebar.error(f" EV Combinado: {ev_combinado*100:.1f}%")
+        if ev_combinado > 0: st.sidebar.success(f"📈 EV Combinado: +{ev_combinado*100:.1f}%")
+        else: st.sidebar.error(f"📉 EV Combinado: {ev_combinado*100:.1f}%")
             
-        st.sidebar.markdown("###  Gestión de Banca (Kelly)")
+        st.sidebar.markdown("### 💰 Gestión de Banca (Kelly)")
         banca_total = st.sidebar.number_input("Banca Común ($)", min_value=1.0, value=25.0, step=1.0)
         fraccion_k = st.sidebar.slider("Fracción de Seguridad", min_value=0.05, max_value=1.0, value=0.25, step=0.05)
         
@@ -144,40 +147,19 @@ def main():
         st.sidebar.info("Analiza un partido en el panel central.")
 
     # ---------------------------------------------------------
-    # PARÁMETROS DE RENDIMIENTO (ACTUALIZADO CON GOLES EN CONTRA)
+    # PARÁMETROS DE RENDIMIENTO AUTOMATIZADOS (Vía data_input)
     # ---------------------------------------------------------
-    st.markdown("### Parámetros de Rendimiento y Contexto Reciente")
+    st.markdown("### Parámetros de Rendimiento Automáticos")
     col_t1, col_t2 = st.columns(2)
     
     with col_t1:
-        equipo_1 = st.text_input("Escuadra Local", value="Paris Saint-Germain")
-        
-        col_inp1, col_inp2 = st.columns(2)
-        with col_inp1:
-            xg_e1 = st.number_input(f"xG Reciente ({equipo_1})", min_value=0.00, value=1.50, step=0.10)
-        with col_inp2:
-            # NUEVO INPUT: Goles en Contra
-            gc_e1 = st.number_input(f"Goles Contra Prom. ({equipo_1})", min_value=0.00, value=1.00, step=0.10)
-            
+        equipo_1 = st.text_input("Escuadra Local", value="Argentina")
+        # Todo el panel visual y lógica se maneja ahora desde data_input
         stats_e1 = di.get_team_stats(equipo_1)
-        if stats_e1 is not None:
-            stats_e1['xg_reciente'] = xg_e1
-            stats_e1['goles_contra'] = gc_e1 # Inyectamos el dato defensivo
         
     with col_t2:
-        equipo_2 = st.text_input("Escuadra Visitante", value="Barcelona")
-        
-        col_inp3, col_inp4 = st.columns(2)
-        with col_inp3:
-            xg_e2 = st.number_input(f"xG Reciente ({equipo_2})", min_value=0.00, value=1.50, step=0.10)
-        with col_inp4:
-            # NUEVO INPUT: Goles en Contra
-            gc_e2 = st.number_input(f"Goles Contra Prom. ({equipo_2})", min_value=0.00, value=1.00, step=0.10)
-            
+        equipo_2 = st.text_input("Escuadra Visitante", value="Austria")
         stats_e2 = di.get_team_stats(equipo_2)
-        if stats_e2 is not None:
-            stats_e2['xg_reciente'] = xg_e2
-            stats_e2['goles_contra'] = gc_e2 # Inyectamos el dato defensivo
         
     st.markdown("---")
     cuotas_mercado = di.get_market_odds()
@@ -187,7 +169,6 @@ def main():
         analisis_analitico = mm.procesar_modelos_matematicos(stats_e1, stats_e2, cuotas_mercado)
         analisis_simulado = sim.ejecutar_montecarlo(stats_e1, stats_e2, n_simulaciones=100000)
         
-        # Recuperar los marcadores calculados por Poisson/Dixon-Coles
         st.session_state.marcadores_top = analisis_analitico.get("marcadores_top", [])
         
         if modelo_activo == "Poisson Bivariado / Dixon-Coles":
@@ -207,11 +188,8 @@ def main():
         st.markdown(f"## Análisis Actual: {st.session_state.partido_activo}")
         propiedades_oscuras = {'background-color': '#121316', 'color': '#FFFFFF', 'border-color': '#27272a'}
         
-        # ---------------------------------------------------------
-        # NUEVO: PANEL DE MARCADORES EXACTOS
-        # ---------------------------------------------------------
         if st.session_state.marcadores_top:
-            st.markdown("###  Proyección de Marcador Exacto (Poisson / Dixon-Coles)")
+            st.markdown("### 🎯 Proyección de Marcador Exacto (Poisson / Dixon-Coles)")
             col_m1, col_m2, col_m3 = st.columns(3)
             
             with col_m1:
@@ -242,7 +220,7 @@ def main():
             else:
                 st.dataframe(st.session_state.df_lineas.style.set_properties(**propiedades_oscuras), use_container_width=True, hide_index=True)
             
-        st.markdown("###  Panel de Carga al Ticket")
+        st.markdown("### ➕ Panel de Carga al Ticket")
         origen_seleccionado = st.radio("Selecciona la procedencia del mercado que deseas jugar:", ["Mercados Principales (Tabla 1)", "Líneas Cortas / Córners / Tarjetas (Tabla 2)"], horizontal=True)
         
         with st.form("add_bet_form_clean"):
