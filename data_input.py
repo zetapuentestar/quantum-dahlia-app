@@ -42,17 +42,32 @@ def _extraer_métrica_bloque(df, fila_inicio, nombre_metrica, default_val):
     return default_val
 
 def get_team_stats(team_name):
-    """
-    Busca el bloque del país en el Excel vertical y mapea las variables desde la columna E.
-    """
-    st.subheader(f" Estadísticas: {team_name}")
+    # ... (código previo)
     
-    # Valores base por defecto si el país no se encuentra
-    vals = {
-        "posesion": 50.0, "goles_favor": 1.5, "goles_contra": 1.0,
-        "tiros": 10.0, "puerta": 4.0, "atajadas": 3.0,
-        "corners": 4.5, "tarjetas": 2.0, "xg": 1.3, "goles_1t": 0.5
-    }
+    if "db_matriz" in st.session_state and st.session_state.db_matriz is not None:
+        df = st.session_state.db_matriz
+        idx_pais = None
+        
+        # LIMPIEZA: Convertimos el nombre buscado a un formato estándar
+        target = str(team_name).strip().upper()
+        
+        # BUSQUEDA FLEXIBLE
+        for idx, row in df.iterrows():
+            # Buscamos en toda la fila, limpiando cada celda
+            fila_texto = " ".join([str(c).strip().upper() for c in row if pd.notna(c)])
+            if target == fila_texto: # Coincidencia exacta de fila
+                idx_pais = idx
+                break
+        
+        # Si no lo encuentra por fila completa, buscamos celda por celda
+        if idx_pais is None:
+            for idx, row in df.iterrows():
+                if target in [str(c).strip().upper() for c in row if pd.notna(c)]:
+                    idx_pais = idx
+                    break
+        
+        if idx_pais is not None:
+            # ... (resto del código de extracción)
     
     # Buscar e importar datos desde la estructura del Excel
     if "db_matriz" in st.session_state and st.session_state.db_matriz is not None:
