@@ -1,3 +1,8 @@
+import os
+try:
+    import openpyxl
+except ImportError:
+    os.system('pip install openpyxl')
 import streamlit as st
 import pandas as pd
 import data_input as di
