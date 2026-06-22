@@ -42,32 +42,51 @@ def _extraer_métrica_bloque(df, fila_inicio, nombre_metrica, default_val):
     return default_val
 
 def get_team_stats(team_name):
-    # ... (código previo)
+    st.subheader(f"📊 Estadísticas: {team_name}")
     
+    # 1. Valores por defecto (Fallback)
+    stats = {"posesion": 50.0, "goles_favor": 1.5, "goles_contra": 1.0, "tiros": 10.0, 
+             "puerta": 4.0, "atajadas": 3.0, "corners": 4.5, "tarjetas": 2.0, "xg": 1.3, "goles_1t": 0.5}
+
     if "db_matriz" in st.session_state and st.session_state.db_matriz is not None:
         df = st.session_state.db_matriz
-        idx_pais = None
         
-        # LIMPIEZA: Convertimos el nombre buscado a un formato estándar
-        target = str(team_name).strip().upper()
-        
-        # BUSQUEDA FLEXIBLE
-        for idx, row in df.iterrows():
-            # Buscamos en toda la fila, limpiando cada celda
-            fila_texto = " ".join([str(c).strip().upper() for c in row if pd.notna(c)])
-            if target == fila_texto: # Coincidencia exacta de fila
-                idx_pais = idx
+        # BUSCAR EL PAÍS
+        found_idx = None
+        for idx in range(len(df)):
+            row_str = str(df.iloc[idx, 0]).strip().upper()
+            if team_name.upper() in row_str:
+                found_idx = idx
                 break
         
-        # Si no lo encuentra por fila completa, buscamos celda por celda
-        if idx_pais is None:
-            for idx, row in df.iterrows():
-                if target in [str(c).strip().upper() for c in row if pd.notna(c)]:
-                    idx_pais = idx
-                    break
-        
-        if idx_pais is not None:
-            # ... (resto del código de extracción)
+        if found_idx is not None:
+            # BUSCAR LAS MÉTRICAS DEBAJO DEL PAÍS
+            # Escaneamos las siguientes 15 filas
+            for i in range(found_idx + 1, found_idx + 16):
+                if i >= len(df): break
+                row_data = df.iloc[i]
+                key = str(row_data[0]).lower()
+                
+                # Mapeo de términos del Excel a nuestro diccionario
+                if "posesion" in key: stats["posesion"] = float(row_data[4] or 50)
+                elif "goles a favor" in key: stats["goles_favor"] = float(row_data[4] or 1.5)
+                elif "goles en contra" in key: stats["goles_contra"] = float(row_data[4] or 1.0)
+                elif "tiros totales" in key: stats["tiros"] = float(row_data[4] or 10)
+                elif "tiros a puerta" in key: stats["puerta"] = float(row_data[4] or 4)
+                elif "atajadas" in key: stats["atajadas"] = float(row_data[4] or 3)
+                elif "corners" in key: stats["corners"] = float(row_data[4] or 4.5)
+                elif "tarjetas" in key: stats["tarjetas"] = float(row_data[4] or 2)
+                elif "goles esperados" in key: stats["xg"] = float(row_data[4] or 1.3)
+                elif "goles 1t" in key: stats["goles_1t"] = float(row_data[4] or 0.5)
+
+    # 2. Renderizado de los campos (aquí se mostrarán los datos cargados)
+    col1, col2 = st.columns(2)
+    with col1:
+        posesion = st.number_input("Posesión (%)", value=stats["posesion"], key=f"pos_{team_name}")
+        goles_f = st.number_input("Goles Favor", value=stats["goles_favor"], key=f"gf_{team_name}")
+        # ... (continúa con el resto de campos usando los valores de stats)
+    
+    return stats # Retorna el diccionario con los valores encontrados
     
     # Buscar e importar datos desde la estructura del Excel
     if "db_matriz" in st.session_state and st.session_state.db_matriz is not None:
