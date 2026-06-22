@@ -6,7 +6,6 @@ def render_db_uploader():
     archivo = st.sidebar.file_uploader("Sube tu Matriz (CSV/Excel)", type=["csv", "xlsx"], key="db_uploader")
     if archivo:
         try:
-            # Leemos el archivo. Al tener estructura plana, el nombre del país aparecerá en la columna 1
             if archivo.name.endswith('.csv'):
                 st.session_state.db_matriz = pd.read_csv(archivo, header=None)
             else:
@@ -16,42 +15,38 @@ def render_db_uploader():
             st.sidebar.error(f"Error: {e}")
 
 def get_team_stats(team_name):
-    # Valores base por defecto
     stats = {"posesion": 50.0, "goles_favor": 1.5, "goles_contra": 1.0, "tiros": 10.0, 
              "puerta": 4.0, "atajadas": 0.0, "corners": 4.0, "tarjetas": 0.0, "xg": 1.3, "goles_1t": 0.5}
 
     if "db_matriz" in st.session_state and st.session_state.db_matriz is not None:
         df = st.session_state.db_matriz
-        
-        # BUSCAR FILA DEL PAÍS: El nombre está en la columna 1 (segunda columna)
         found_idx = None
         for idx in range(len(df)):
-            if team_name.upper() in str(df.iloc[idx, 1]).upper():
+            if any(team_name.upper() in str(cell).upper() for cell in df.iloc[idx]):
                 found_idx = idx
                 break
         
         if found_idx is not None:
-            # ESCANEAR HACIA ABAJO (buscamos en la columna 0, valor en columna 4)
             for i in range(found_idx + 1, found_idx + 15):
                 if i >= len(df): break
-                key = str(df.iloc[i, 0]).lower()
-                val = df.iloc[i, 4] # Columna E (Ponderado)
-                
+                row = df.iloc[i]
+                row_str = " ".join([str(c) for c in row if pd.notna(c)]).lower()
+                val = row[4] 
                 if pd.isna(val): continue
+                
                 try:
-                    if "posesion" in key: stats["posesion"] = float(val)
-                    elif "goles a favor" in key: stats["goles_favor"] = float(val)
-                    elif "goles en contra" in key: stats["goles_contra"] = float(val)
-                    elif "tiros totales" in key: stats["tiros"] = float(val)
-                    elif "tiros a puerta" in key: stats["puerta"] = float(val)
-                    elif "atajadas" in key: stats["atajadas"] = float(val)
-                    elif "corners" in key: stats["corners"] = float(val)
-                    elif "tarjetas" in key: stats["tarjetas"] = float(val)
-                    elif "esperados" in key: stats["xg"] = float(val)
-                    elif "goles 1t" in key: stats["goles_1t"] = float(val)
+                    if "posesion" in row_str: stats["posesion"] = float(val)
+                    elif "goles a favor" in row_str: stats["goles_favor"] = float(val)
+                    elif "goles en contra" in row_str: stats["goles_contra"] = float(val)
+                    elif "tiros totales" in row_str: stats["tiros"] = float(val)
+                    elif "tiros a puerta" in row_str: stats["puerta"] = float(val)
+                    elif "atajadas" in row_str: stats["atajadas"] = float(val)
+                    elif "corners" in row_str: stats["corners"] = float(val)
+                    elif "tarjetas" in row_str: stats["tarjetas"] = float(val)
+                    elif "esperados" in row_str: stats["xg"] = float(val)
+                    elif "goles 1t" in row_str: stats["goles_1t"] = float(val)
                 except: continue
 
-    # UI Unificada y limpia
     st.subheader(f"📊 Estadísticas: {team_name}")
     col1, col2 = st.columns(2)
     
@@ -81,10 +76,11 @@ def get_market_odds():
     with col2:
         c4 = st.number_input("Más de 2.5", value=1.85, step=0.05)
         c5 = st.number_input("Menos de 2.5", value=1.95, step=0.05)
-        c6 = st.number_input("Ambos Anotan", value=1.75, step=0.05)
+        c6 = st.number_input("Más de 1.5", value=1.25, step=0.05)
+        c7 = st.number_input("Menos de 1.5", value=3.50, step=0.05)
     with col3:
-        c7 = st.number_input("Victoria 1T Local", value=2.70, step=0.05)
-        c8 = st.number_input("Victoria 1T Visita", value=3.60, step=0.05)
+        c8 = st.number_input("Ambos Anotan", value=1.75, step=0.05)
         c9 = st.number_input("Línea Córners", value=9.5, step=0.5)
+        c10 = st.number_input("Línea Tarjetas", value=4.5, step=0.5)
 
-    return {"1x2": [c1, c2, c3], "goles": [c4, c5], "btts": c6, "ht": [c7, c8], "corners": c9}
+    return {"1x2": [c1, c2, c3], "goles": [c4, c5, c6, c7], "btts": c8, "corners": c9, "tarjetas": c10}
