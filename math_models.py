@@ -9,17 +9,13 @@ def derivar_lambdas_del_mercado(cuota_mas_25, cuota_menos_25):
     Deriva el total de goles esperado implícito por las cuotas de la bookie.
     """
     if cuota_mas_25 <= 1.0 or cuota_menos_25 <= 1.0:
-        return 2.5  # Valor por defecto si hay error en cuotas
+        return 2.5  
         
-    # Probabilidad implícita del Under 2.5 (ajustada sin margen)
     prob_u25_raw = 1 / cuota_menos_25
     prob_o25_raw = 1 / cuota_mas_25
     prob_total = prob_u25_raw + prob_o25_raw
     prob_u25 = prob_u25_raw / prob_total
     
-    # Encontrar el Lambda total que genera esa probabilidad exacta de Under 2.5
-    # P(X <= 2) = e^-L * (1 + L + L^2/2)
-    # Buscamos una aproximación numérica rápida para el Lambda del mercado
     for l_test in np.arange(0.5, 5.0, 0.05):
         p_calc = poisson.cdf(2, l_test)
         if p_calc <= prob_u25:
@@ -29,41 +25,40 @@ def derivar_lambdas_del_mercado(cuota_mas_25, cuota_menos_25):
 
 def actualizar_lambdas_bayesiano(stats_local, stats_visita, cuotas_mercado, alpha=0.60):
     """
-    [Modelo Bayesiano]
-    Combina las estadísticas manuales del usuario con el consenso del mercado.
-    alpha: Peso dado a las estadísticas del usuario frente a la Bookie (0.0 a 1.0).
+    [Modelo Bayesiano Cruzado]
+    Combina estadísticas ofensivas propias con las defensivas del rival,
+    ponderadas con el xG reciente y cruzadas con el mercado.
     """
-    # 1. Obtener la expectativa total del mercado (Prior de la Casa de Apuestas)
-    c_g25 = cuotas_mercado["goles_2_5"]
+    c_g25 = cuotas_mercado.get("goles_2_5", [1.85, 1.85])
     lambda_mercado_total = derivar_lambdas_del_mercado(c_g25[0], c_g25[1])
     
-    # Distribución simple del mercado (55% local, 45% visita por ventaja de casa estándar)
     lambda_m_local = lambda_mercado_total * 0.55
     lambda_m_visita = lambda_mercado_total * 0.45
     
-    # 2. Datos del usuario (Likelihood) - INTEGRACIÓN DEL xG RECIENTE
-    # Extraemos el histórico y el xG (si no hay xG, usa el histórico como respaldo de seguridad)
+    # 1. Extracción de Métricas Ofensivas y Defensivas
     goles_hist_local = float(stats_local.get("goles_pp", 1.0))
+    goles_contra_local = float(stats_local.get("goles_contra", 1.0)) # NUEVA MÉTRICA
     xg_rec_local = float(stats_local.get("xg_reciente", goles_hist_local))
     
     goles_hist_visita = float(stats_visita.get("goles_pp", 1.0))
+    goles_contra_visita = float(stats_visita.get("goles_contra", 1.0)) # NUEVA MÉTRICA
     xg_rec_visita = float(stats_visita.get("xg_reciente", goles_hist_visita))
     
-    # Aplicamos la Ponderación: 60% Historia vs 40% Realidad del Último Partido
-    lambda_u_local = (goles_hist_local * 0.60) + (xg_rec_local * 0.40)
-    lambda_u_visita = (goles_hist_visita * 0.60) + (xg_rec_visita * 0.40)
+    # 2. Cruce Táctico: Tu ataque vs Su defensa (Peso 50/50)
+    poder_ofensivo_l = (goles_hist_local * 0.5) + (goles_contra_visita * 0.5)
+    poder_ofensivo_v = (goles_hist_visita * 0.5) + (goles_contra_local * 0.5)
     
-    # 3. Cálculo de la distribución Posterior (Fusión de tu modelo ajustado con la Bookie)
+    # 3. Ponderación Reciente: 60% Poder Histórico Cruzado vs 40% xG del último partido
+    lambda_u_local = (poder_ofensivo_l * 0.60) + (xg_rec_local * 0.40)
+    lambda_u_visita = (poder_ofensivo_v * 0.60) + (xg_rec_visita * 0.40)
+    
+    # 4. Fusión con el Mercado (Prior)
     lambda_final_local = (alpha * lambda_u_local) + ((1 - alpha) * lambda_m_local)
     lambda_final_visita = (alpha * lambda_u_visita) + ((1 - alpha) * lambda_m_visita)
     
     return round(lambda_final_local, 3), round(lambda_final_visita, 3)
 
 def factor_ajuste_dixon_coles(x, y, lambda_l, lambda_v, rho):
-    """
-    [Modelo Dixon-Coles]
-    Aplica el factor de corrección tau para ajustar la interdependencia de goles bajos.
-    """
     if rho == 0:
         return 1.0
         
@@ -79,58 +74,59 @@ def factor_ajuste_dixon_coles(x, y, lambda_l, lambda_v, rho):
         return 1.0
 
 def calcular_matriz_bivariada_dixon_coles(lambda_l, lambda_v, rho=-0.05, max_goles=8):
-    """
-    [Poisson Bivariado + Dixon-Coles]
-    Genera la matriz de probabilidad de marcadores exactos corregida.
-    rho: Parámetro de dependencia (típicamente entre -0.1 y 0.0 para fútbol actual).
-    """
     matriz_prob = np.zeros((max_goles, max_goles), dtype=float)
     
     for x in range(max_goles):
         for y in range(max_goles):
-            # Poisson independiente básico
             prob_p_local = poisson.pmf(x, lambda_l)
             prob_p_visita = poisson.pmf(y, lambda_v)
             indep_prob = prob_p_local * prob_p_visita
             
-            # Aplicar corrección Dixon-Coles
             tau = factor_ajuste_dixon_coles(x, y, lambda_l, lambda_v, rho)
-            matriz_prob[x, y] = max(0.0, indep_prob * tau) # Evitar flotantes negativos ínfimos
+            matriz_prob[x, y] = max(0.0, indep_prob * tau) 
             
-    # Normalizar la matriz para asegurar que la suma de probabilidades sea exactamente 1.0
     matriz_prob /= matriz_prob.sum()
     return matriz_prob
 
+def extraer_mejores_marcadores(matriz_prob, top_n=3):
+    """Extrae los N marcadores exactos con mayor probabilidad de la matriz."""
+    marcadores = []
+    max_goles = matriz_prob.shape[0]
+    for x in range(max_goles):
+        for y in range(max_goles):
+            marcadores.append({"marcador": f"{x}-{y}", "prob": matriz_prob[x, y]})
+            
+    # Ordenar de mayor a menor probabilidad
+    marcadores_ordenados = sorted(marcadores, key=lambda d: d['prob'], reverse=True)
+    return marcadores_ordenados[:top_n]
+
 def procesar_modelos_matematicos(stats_local, stats_visita, cuotas_mercado):
-    """
-    Función orquestadora principal que será llamada desde main.py.
-    """
     # 1. Ejecutar actualización Bayesiana para estabilizar Lambdas
     lambda_l, lambda_v = actualizar_lambdas_bayesiano(stats_local, stats_visita, cuotas_mercado)
     
     # 2. Construir matriz con Poisson Bivariado y Dixon-Coles
-    # Usamos rho = -0.06 para balancear la subestimación de empates en ligas top
     matriz_prob = calcular_matriz_bivariada_dixon_coles(lambda_l, lambda_v, rho=-0.06)
     
-    # 3. Extraer probabilidades de los mercados del partido completo
+    # 3. Marcadores Exactos (NUEVO)
+    top_marcadores = extraer_mejores_marcadores(matriz_prob, top_n=3)
+    
+    # 4. Extraer probabilidades de los mercados del partido completo
     prob_1 = float(np.tril(matriz_prob, -1).sum())
     prob_x = float(np.trace(matriz_prob))
     prob_2 = float(np.triu(matriz_prob, 1).sum())
     
-    # Over/Under 2.5
     prob_u25 = float(sum(matriz_prob[x, y] for x in range(8) for y in range(8) if x + y < 2.5))
     prob_o25 = 1.0 - prob_u25
     
-    # Over/Under 1.5 (NUEVO)
     prob_u15 = float(sum(matriz_prob[x, y] for x in range(8) for y in range(8) if x + y < 1.5))
     prob_o15 = 1.0 - prob_u15
     
-    # Ambos Anotan (BTTS)
     prob_btts_no = float(matriz_prob[0, :].sum() + matriz_prob[:, 0].sum() - matriz_prob[0, 0])
     prob_btts_si = 1.0 - prob_btts_no
     
     return {
         "lambdas_ajustados": {"lambda_l": lambda_l, "lambda_v": lambda_v},
+        "marcadores_top": top_marcadores,  # <-- Se devuelve a app.py
         "prob_1x2": {"Local": prob_1, "Empate": prob_x, "Visita": prob_2},
         "goles": {
             "over_1_5": prob_o15, "under_1_5": prob_u15,
