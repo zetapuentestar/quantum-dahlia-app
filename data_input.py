@@ -3,121 +3,82 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
+import streamlit as st
+import pandas as pd
+
 def render_db_uploader():
-    """
-    Renderiza el cargador de la base de datos en el sidebar.
-    Soporta tus archivos de Excel (.xlsx) con tablas verticales por país.
-    """
-    st.sidebar.markdown("###  Base de Datos (Matriz)")
-    archivo = st.sidebar.file_uploader("Sube tu Matriz Cuantitativa (Excel)", type=["xlsx", "xls"], key="db_uploader")
-    
+    st.sidebar.markdown("### 📋 Base de Datos (Matriz)")
+    archivo = st.sidebar.file_uploader("Sube tu Matriz Cuantitativa (Excel/CSV)", type=["xlsx", "csv"], key="db_uploader")
     if archivo:
         try:
-            # Leemos el Excel sin asumir cabeceras fijas para poder procesar los bloques
-            st.session_state.db_matriz = pd.read_excel(archivo, header=None)
-            st.sidebar.success("✅ Matriz de bloques conectada con éxito.")
+            if archivo.name.endswith('.csv'):
+                st.session_state.db_matriz = pd.read_csv(archivo, header=None)
+            else:
+                st.session_state.db_matriz = pd.read_excel(archivo, header=None)
+            st.sidebar.success("✅ Datos cargados.")
         except Exception as e:
-            st.sidebar.error(f"Error al leer el Excel: {e}")
-    else:
-        st.session_state.db_matriz = None
-
-def _extraer_métrica_bloque(df, fila_inicio, nombre_metrica, default_val):
-    """
-    Busca la métrica bajando desde la posición del país en la columna A,
-    y extrae el valor calculado en la columna E (Ponderado).
-    """
-    # Buscamos en las siguientes 15 filas a partir de donde se encontró el país
-    for i in range(fila_inicio + 1, min(fila_inicio + 16, len(df))):
-        celda_A = str(df.iloc[i, 0]).strip().lower()
-        if nombre_metrica in celda_A:
-            valor_ponderado = df.iloc[i, 4] # Columna E es el índice 4 (A=0, B=1, C=2, D=3, E=4)
-            
-            # Validar que no sea un valor nulo o un error de Excel
-            if pd.notna(valor_ponderado) and not isinstance(valor_ponderado, str):
-                return float(valor_ponderado)
-            try:
-                return float(valor_ponderado)
-            except (ValueError, TypeError):
-                return default_val
-    return default_val
+            st.sidebar.error(f"Error: {e}")
 
 def get_team_stats(team_name):
-    st.subheader(f"📊 Estadísticas: {team_name}")
-    
-    # 1. Valores por defecto (Fallback)
+    # Valores base por defecto
     stats = {"posesion": 50.0, "goles_favor": 1.5, "goles_contra": 1.0, "tiros": 10.0, 
-             "puerta": 4.0, "atajadas": 3.0, "corners": 4.5, "tarjetas": 2.0, "xg": 1.3, "goles_1t": 0.5}
+             "puerta": 4.0, "atajadas": 0.0, "corners": 4.0, "tarjetas": 0.0, "xg": 1.3, "goles_1t": 0.5}
 
     if "db_matriz" in st.session_state and st.session_state.db_matriz is not None:
         df = st.session_state.db_matriz
-        
-        # BUSCAR EL PAÍS
+        # Buscar la fila del país
         found_idx = None
         for idx in range(len(df)):
-            row_str = str(df.iloc[idx, 0]).strip().upper()
-            if team_name.upper() in row_str:
+            if team_name.upper() in str(df.iloc[idx, 0]).upper():
                 found_idx = idx
                 break
         
         if found_idx is not None:
-            # BUSCAR LAS MÉTRICAS DEBAJO DEL PAÍS
-            # Escaneamos las siguientes 15 filas
-            for i in range(found_idx + 1, found_idx + 16):
+            # Escanear filas debajo del país
+            for i in range(found_idx + 1, found_idx + 12):
                 if i >= len(df): break
-                row_data = df.iloc[i]
-                key = str(row_data[0]).lower()
+                row = df.iloc[i]
+                key = str(row[0]).lower()
+                val = row[4] # Columna E (Ponderado)
+                if pd.isna(val): continue
                 
-                # Mapeo de términos del Excel a nuestro diccionario
-                if "posesion" in key: stats["posesion"] = float(row_data[4] or 50)
-                elif "goles a favor" in key: stats["goles_favor"] = float(row_data[4] or 1.5)
-                elif "goles en contra" in key: stats["goles_contra"] = float(row_data[4] or 1.0)
-                elif "tiros totales" in key: stats["tiros"] = float(row_data[4] or 10)
-                elif "tiros a puerta" in key: stats["puerta"] = float(row_data[4] or 4)
-                elif "atajadas" in key: stats["atajadas"] = float(row_data[4] or 3)
-                elif "corners" in key: stats["corners"] = float(row_data[4] or 4.5)
-                elif "tarjetas" in key: stats["tarjetas"] = float(row_data[4] or 2)
-                elif "goles esperados" in key: stats["xg"] = float(row_data[4] or 1.3)
-                elif "goles 1t" in key: stats["goles_1t"] = float(row_data[4] or 0.5)
+                try:
+                    if "posesion" in key: stats["posesion"] = float(val)
+                    elif "goles a favor" in key: stats["goles_favor"] = float(val)
+                    elif "goles en contra" in key: stats["goles_contra"] = float(val)
+                    elif "tiros totales" in key: stats["tiros"] = float(val)
+                    elif "tiros a puerta" in key: stats["puerta"] = float(val)
+                    elif "atajadas" in key: stats["atajadas"] = float(val)
+                    elif "corners" in key: stats["corners"] = float(val)
+                    elif "tarjetas" in key: stats["tarjetas"] = float(val)
+                    elif "esperados" in key: stats["xg"] = float(val)
+                    elif "goles 1t" in key: stats["goles_1t"] = float(val)
+                except: continue
 
-    # 2. Renderizado de los campos (aquí se mostrarán los datos cargados)
+    # Renderizado UI unificado
     col1, col2 = st.columns(2)
     with col1:
-        posesion = st.number_input("Posesión (%)", value=stats["posesion"], key=f"pos_{team_name}")
-        goles_f = st.number_input("Goles Favor", value=stats["goles_favor"], key=f"gf_{team_name}")
-        # ... (continúa con el resto de campos usando los valores de stats)
-    
-    return stats # Retorna el diccionario con los valores encontrados
-    
-    # Buscar e importar datos desde la estructura del Excel
-    if "db_matriz" in st.session_state and st.session_state.db_matriz is not None:
-        df = st.session_state.db_matriz
-        idx_pais = None
-        
-        # 1. Buscar en qué fila se encuentra el nombre del país (Columnas A o B de tu cabecera)
-        for idx, row in df.iterrows():
-            val_A = str(row[0]).strip().upper() if pd.notna(row[0]) else ""
-            val_B = str(row[1]).strip().upper() if pd.notna(row[1]) else ""
-            
-            if team_name.upper() in val_A or team_name.upper() in val_B:
-                idx_pais = idx
-                break
-                
-        if idx_pais is not None:
-            st.caption(f" Datos automatizados extraídos de la columna 'Ponderado' para **{team_name}**")
-            
-            # 2. Mapeo exacto buscando la fila por palabra clave en la Columna A
-            vals["posesion"] = _extraer_métrica_bloque(df, idx_pais, "posesion", vals["posesion"])
-            vals["goles_favor"] = _extraer_métrica_bloque(df, idx_pais, "goles por partido", vals["goles_favor"])
-            vals["goles_contra"] = _extraer_métrica_bloque(df, idx_pais, "encajados", vals["goles_contra"])
-            vals["tiros"] = _extraer_métrica_bloque(df, idx_pais, "tiros totales", vals["tiros"])
-            vals["puerta"] = _extraer_métrica_bloque(df, idx_pais, "tiros a puerta", vals["puerta"])
-            vals["atajadas"] = _extraer_métrica_bloque(df, idx_pais, "atajadas", vals["atajadas"])
-            vals["corners"] = _extraer_métrica_bloque(df, idx_pais, "corners", vals["corners"])
-            vals["tarjetas"] = _extraer_métrica_bloque(df, idx_pais, "tarjetas", vals["tarjetas"])
-            vals["xg"] = _extraer_métrica_bloque(df, idx_pais, "esperados", vals["xg"])
-            vals["goles_1t"] = _extraer_métrica_bloque(df, idx_pais, "1 mitad", vals["goles_1t"])
-        else:
-            st.warning(f"⚠️ No se encontró el bloque para '{team_name}' en el Excel. Usando valores base.")
+        out_g_f = st.number_input("Goles Favor (Pond)", value=stats["goles_favor"], step=0.1, key=f"gf_{team_name}")
+        out_g_c = st.number_input("Goles Contra (Pond)", value=stats["goles_contra"], step=0.1, key=f"gc_{team_name}")
+        out_xg = st.number_input("xG (Pond)", value=stats["xg"], step=0.1, key=f"xg_{team_name}")
+        out_g1t = st.number_input("Goles 1T", value=stats["goles_1t"], step=0.1, key=f"g1t_{team_name}")
+        out_pos = st.number_input("Posesión (%)", value=stats["posesion"], step=1.0, key=f"pos_{team_name}")
+    with col2:
+        out_cor = st.number_input("Córners", value=stats["corners"], step=0.5, key=f"cor_{team_name}")
+        out_tar = st.number_input("Tarjetas", value=stats["tarjetas"], step=0.5, key=f"tar_{team_name}")
+        out_tir = st.number_input("Tiros Totales", value=stats["tiros"], step=0.5, key=f"ti_{team_name}")
+        out_pue = st.number_input("Tiros a Puerta", value=stats["puerta"], step=0.5, key=f"tp_{team_name}")
+        out_ata = st.number_input("Atajadas", value=stats["atajadas"], step=0.5, key=f"at_{team_name}")
+
+    return {
+        "goles_favor": out_g_f, "goles_contra": out_g_c, "xg": out_xg, "goles_1t": out_g1t,
+        "posesion": out_pos, "corners": out_cor, "tarjetas": out_tar, "tiros": out_tir,
+        "puerta": out_pue, "atajadas": out_ata
+    }
+
+def get_market_odds():
+    # Mantenemos tu lógica de mercado intacta
+    return {"1x2": [2.10, 3.40, 3.10], "goles_2_5": [1.85, 1.95], "goles_1_5": [1.25, 3.50], "btts_si": 1.75, "victoria_1t": [2.70, 3.60], "lineas": {"corners": 9.5, "tarjetas": 4.5}}
 
     # 3. Renderizado simétrico e interactivo en la interfaz de Streamlit
     col1, col2 = st.columns(2)
