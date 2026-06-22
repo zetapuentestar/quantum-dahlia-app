@@ -88,14 +88,14 @@ def get_market_odds():
     with c3:
         linea_cor = st.number_input("Línea Corners", value=9.5, step=0.5)
         linea_tar = st.number_input("Línea Tarjetas", value=3.5, step=0.5)
-        # 👇 AGREGAMOS ESTO AQUÍ
+        # Agregamos la cuota que faltaba en el error anterior
         c_btts_si = st.number_input("Ambos Anotan (Sí)", value=1.80, step=0.05) 
     
     return {
         "1x2": [c_1, c_x, c_2],
         "goles_2_5": [c_o25, c_u25],
         "goles_1_5": [c_o15, c_u15],
-        "1t": [c_1t1, c_1t2],
+        "victoria_1t": [c_1t1, c_1t2],  # ✅ CAMBIADO DE "1t" A "victoria_1t"
         "lineas": {"corners": linea_cor, "tarjetas": linea_tar},
-        "btts_si": c_btts_si # 👇 Y LO AGREGAMOS AL DICCIONARIO
+        "btts_si": c_btts_si            # ✅ AGREGADO PARA EVITAR EL ERROR ANTERIOR
     }
