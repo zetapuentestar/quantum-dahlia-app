@@ -7,7 +7,6 @@ import streamlit as st
 import pandas as pd
 import data_input as di
 import math_models as mm
-import simulation as sim
 import report as rep
 
 st.set_page_config(
@@ -16,26 +15,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-def calcular_stake_kelly_adaptado(prob_combinada, cuota_total, banca_total, fraccion_kelly=0.25, min_apuesta_casa=1.0):
-    if cuota_total <= 1 or prob_combinada <= 0: return 0.0, 0.0, "Sin Valor"
-    b = cuota_total - 1
-    p = prob_combinada
-    q = 1.0 - p
-    f_star = (b * p - q) / b
-    if f_star <= 0: return 0.0, 0.0, "EV Negativo"
-    porcentaje_apuesta = f_star * fraccion_kelly
-    dinero_sugerido_puro = banca_total * porcentaje_apuesta
-    if dinero_sugerido_puro < min_apuesta_casa: return porcentaje_apuesta * 100, dinero_sugerido_puro, "Bajo Umbral"
-    dinero_redondeado = round(dinero_sugerido_puro * 2) / 2
-    porcentaje_ajustado = (dinero_redondeado / banca_total) * 100
-    return porcentaje_ajustado, dinero_redondeado, "Óptimo"
-
-def aplicar_estilo_dinamico(modelo_seleccionado):
-    imagenes_fondo = {
-        "Simulación Montecarlo (100k)": "https://i.pinimg.com/736x/9d/2d/14/9d2d14b652fb4f21ab530ea256c37fcc.jpg",
-        "Poisson Bivariado / Dixon-Coles": "https://i.pinimg.com/736x/9d/2d/14/9d2d14b652fb4f21ab530ea256c37fcc.jpg"
-    }
-    url_fondo = imagenes_fondo.get(modelo_seleccionado, imagenes_fondo["Simulación Montecarlo (100k)"])
+def aplicar_estilo_dinamico():
+    url_fondo = "https://i.pinimg.com/736x/9d/2d/14/9d2d14b652fb4f21ab530ea256c37fcc.jpg"
     css = f"""
     <style>
     .stApp, div[data-testid="stAppViewBlockContainer"] {{ background-color: transparent !important; }}
@@ -93,9 +74,7 @@ def main():
     if "marcadores_top" not in st.session_state: st.session_state.marcadores_top = None
 
     st.title("QUANTUM DAHLIA SPORTS INVESTMENTS")
-    
-    modelo_activo = st.selectbox("Arquitectura de Simulación Activa", ["Simulación Montecarlo (100k)", "Poisson Bivariado / Dixon-Coles"])
-    aplicar_estilo_dinamico(modelo_activo)
+    aplicar_estilo_dinamico()
     
     st.sidebar.markdown("## 📋 Ticket de la Sociedad")
     
@@ -133,21 +112,7 @@ def main():
         if contiene_trampa: st.sidebar.warning("¡Cuidado! El ticket incluye selecciones con EV Negativo.")
         if ev_combinado > 0: st.sidebar.success(f"📈 EV Combinado: +{ev_combinado*100:.1f}%")
         else: st.sidebar.error(f"📉 EV Combinado: {ev_combinado*100:.1f}%")
-            
-        st.sidebar.markdown("### 💰 Gestión de Banca (Kelly)")
-        banca_total = st.sidebar.number_input("Banca Común ($)", min_value=1.0, value=25.0, step=1.0)
-        fraccion_k = st.sidebar.slider("Fracción de Seguridad", min_value=0.05, max_value=1.0, value=0.25, step=0.05)
-        
-        pct_banca, dinero_stake, estado_kelly = calcular_stake_kelly_adaptado(prob_acumulada, cuota_acumulada, banca_total, fraccion_k, min_apuesta_casa=1.0)
-        
-        if estado_kelly == "Óptimo":
-            st.sidebar.metric(label="Monto Exacto a Apostar", value=f"${dinero_stake:.2f}", delta=f"{pct_banca:.1f}% de la banca")
-        elif estado_kelly == "Bajo Umbral":
-            st.sidebar.warning(f"Matemáticamente la inversión sugerida es de ${dinero_stake:.2f} (menor al límite).")
-            pct_minimo = (1.0 / banca_total) * 100
-            st.sidebar.info(f"Si deciden jugar el mínimo ($1.00), arriesgarán el **{pct_minimo:.1f}%** de la banca.")
-        else:
-            st.sidebar.info("El modelo recomienda NO arriesgar capital (Sin valor).")
+
     else:
         st.sidebar.info("Analiza un partido en el panel central.")
 
@@ -159,7 +124,6 @@ def main():
     
     with col_t1:
         equipo_1 = st.text_input("Escuadra Local", value="Argentina")
-        # Todo el panel visual y lógica se maneja ahora desde data_input
         stats_e1 = di.get_team_stats(equipo_1)
         
     with col_t2:
@@ -171,19 +135,14 @@ def main():
     st.markdown("---")
     
     if st.button("Ejecutar Modelos Cuantitativos"):
+        # Se ejecuta únicamente el modelo unificado que ahora corre Poisson Bivariado / Dixon-Coles
         analisis_analitico = mm.procesar_modelos_matematicos(stats_e1, stats_e2, cuotas_mercado)
-        analisis_simulado = sim.ejecutar_montecarlo(stats_e1, stats_e2, n_simulaciones=100000)
         
         st.session_state.marcadores_top = analisis_analitico.get("marcadores_top", [])
         
-        if modelo_activo == "Poisson Bivariado / Dixon-Coles":
-            if "prob_1x2_1t" not in analisis_analitico or any(v == 0.0 for v in analisis_analitico.get("prob_1x2_1t", {}).values()):
-                analisis_analitico["prob_1x2_1t"] = analisis_simulado.get("prob_1x2_1t", {"Local": 33.3, "Empate": 33.3, "Visita": 33.4})
-            df_valores = rep.generar_reporte_valores(analisis_analitico, cuotas_mercado)
-        else:
-            df_valores = rep.generar_reporte_valores(analisis_simulado, cuotas_mercado)
-            
-        df_lineas = rep.generar_reporte_lineas_asiaticas(analisis_simulado, cuotas_mercado)
+        # Generamos los reportes utilizando exclusivamente la data del modelo analítico
+        df_valores = rep.generar_reporte_valores(analisis_analitico, cuotas_mercado)
+        df_lineas = rep.generar_reporte_lineas_asiaticas(analisis_analitico, cuotas_mercado)
         
         st.session_state.df_valores = df_valores
         st.session_state.df_lineas = df_lineas
