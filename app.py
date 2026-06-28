@@ -142,7 +142,7 @@ def main():
         
         # Generamos los reportes utilizando exclusivamente la data del modelo analítico
         df_valores = rep.generar_reporte_valores(analisis_analitico, cuotas_mercado)
-        df_lineas = rep.generar_reporte_lineas_asiaticas(analisis_analitico, cuotas_mercado)
+        df_lineas = rep.generar_reporte_lineas_asiaticas(analisis_analitico, cuotas_mercado, stats_e1, stats_e2)
         
         st.session_state.df_valores = df_valores
         st.session_state.df_lineas = df_lineas
