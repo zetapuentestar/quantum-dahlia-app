@@ -1,82 +1,72 @@
-# simulation.py
 import numpy as np
 import pandas as pd
+from scipy.stats import poisson
 
 def ejecutar_montecarlo(stats_local, stats_visita, n_simulaciones=100000):
     """
-    Ejecuta una simulación de Montecarlo basada en las esperanzas matemáticas (lambdas)
-    de cada equipo para predecir goles, goles en el 1T, córners y tarjetas.
+    [REFACTORIZADO AL MODELO ÚNICO ANALÍTICO]
+    Se ha eliminado la naturaleza frecuentista (Montecarlo) para los goles.
+    Ahora utiliza Matrices de Probabilidad de Poisson exactas, alineándose con
+    el rigor matemático del motor Bayesiano/Termodinámico.
+    (Mantenemos el nombre de la función para retrocompatibilidad con app.py)
     """
-    # 1. Extraer los Lambdas y aplicar Ponderación de xG Reciente
-    # Goles Partido Completo (Ponderado: 60% Histórico + 40% xG Último Partido)
-    goles_hist_l = float(stats_local.get("goles_pp", 1.0))
-    xg_rec_l = float(stats_local.get("xg_reciente", goles_hist_l))
-    lambda_goles_l = (goles_hist_l * 0.60) + (xg_rec_l * 0.40)
+    # 1. Extraer Esperanzas Matemáticas (Lambdas)
+    goles_hist_l = float(stats_local.get("goles_favor", 1.0))
+    xg_rec_l = float(stats_local.get("xg", goles_hist_l))
+    lambda_l = (goles_hist_l * 0.60) + (xg_rec_l * 0.40)
     
-    goles_hist_v = float(stats_visita.get("goles_pp", 1.0))
-    xg_rec_v = float(stats_visita.get("xg_reciente", goles_hist_v))
-    lambda_goles_v = (goles_hist_v * 0.60) + (xg_rec_v * 0.40)
+    goles_hist_v = float(stats_local.get("goles_contra", 1.0)) # Corregido al cruce defensivo
+    xg_rec_v = float(stats_visita.get("xg", goles_hist_v))
+    lambda_v = (goles_hist_v * 0.60) + (xg_rec_v * 0.40)
     
-    # Goles Primera Mitad (HT)
-    lambda_goles_1t_l = float(stats_local.get("goles_1t", 0.5))
-    lambda_goles_1t_v = float(stats_visita.get("goles_1t", 0.5))
+    # Goles Primera Mitad (HT) - Distribución temporal analítica
+    lambda_1t_l = float(stats_local.get("goles_1t", lambda_l * 0.45))
+    lambda_1t_v = float(stats_visita.get("goles_1t", lambda_v * 0.45))
     
-    # Córners
-    lambda_corners_l = float(stats_local.get("corners", 4.5))
-    lambda_corners_v = float(stats_visita.get("corners", 4.5))
+    # Mercados Secundarios (Córners y Tarjetas)
+    lambda_cor_l = float(stats_local.get("corners", 4.5))
+    lambda_cor_v = float(stats_visita.get("corners", 4.5))
+    lambda_cor_total = lambda_cor_l + lambda_cor_v
     
-    # Tarjetas
-    lambda_tarjetas_l = float(stats_local.get("tarjetas", 2.0))
-    lambda_tarjetas_v = float(stats_visita.get("tarjetas", 2.0))
+    lambda_tar_l = float(stats_local.get("tarjetas", 2.0))
+    lambda_tar_v = float(stats_visita.get("tarjetas", 2.0))
+    lambda_tar_total = lambda_tar_l + lambda_tar_v
 
-    # 2. Generar muestreos aleatorios masivos (Vectores de Poisson)
-    # Goles en el partido completo
-    sim_goles_l = np.random.poisson(lambda_goles_l, n_simulaciones)
-    sim_goles_v = np.random.poisson(lambda_goles_v, n_simulaciones)
+    # 2. Reemplazo Analítico: Matriz Bivariada Base (Sin azar)
+    matriz_ft = np.zeros((8, 8), dtype=float)
+    matriz_ht = np.zeros((8, 8), dtype=float)
     
-    # Goles en el Primer Tiempo
-    sim_goles_1t_l = np.random.poisson(lambda_goles_1t_l, n_simulaciones)
-    sim_goles_1t_v = np.random.poisson(lambda_goles_1t_v, n_simulaciones)
-    
-    # Córners Totales (Suma de ambos equipos)
-    sim_corners_l = np.random.poisson(lambda_corners_l, n_simulaciones)
-    sim_corners_v = np.random.poisson(lambda_corners_v, n_simulaciones)
-    sim_corners_totales = sim_corners_l + sim_corners_v
-    
-    # Tarjetas Totales (Suma de ambos equipos)
-    sim_tarjetas_l = np.random.poisson(lambda_tarjetas_l, n_simulaciones)
-    sim_tarjetas_v = np.random.poisson(lambda_tarjetas_v, n_simulaciones)
-    sim_tarjetas_totales = sim_tarjetas_l + sim_tarjetas_v
+    for x in range(8):
+        for y in range(8):
+            matriz_ft[x, y] = poisson.pmf(x, lambda_l) * poisson.pmf(y, lambda_v)
+            matriz_ht[x, y] = poisson.pmf(x, lambda_1t_l) * poisson.pmf(y, lambda_1t_v)
 
-    # 3. Procesamiento de Probabilidades (Resultados con floats de alta precisión)
+    # 3. Extracción de Probabilidades Exactas (Evita varianza frecuentista)
+    gana_l = float(np.tril(matriz_ft, -1).sum())
+    empate = float(np.trace(matriz_ft))
+    gana_v = float(np.triu(matriz_ft, 1).sum())
     
-    # Mercado 1X2 Partido Completo
-    gana_l = np.sum(sim_goles_l > sim_goles_v) / n_simulaciones
-    empate = np.sum(sim_goles_l == sim_goles_v) / n_simulaciones
-    gana_v = np.sum(sim_goles_l < sim_goles_v) / n_simulaciones
+    gana_1t_l = float(np.tril(matriz_ht, -1).sum())
+    empate_1t = float(np.trace(matriz_ht))
+    gana_1t_v = float(np.triu(matriz_ht, 1).sum())
     
-    # Mercado 1X2 Primera Mitad (HT)
-    gana_1t_l = np.sum(sim_goles_1t_l > sim_goles_1t_v) / n_simulaciones
-    empate_1t = np.sum(sim_goles_1t_l == sim_goles_1t_v) / n_simulaciones
-    gana_1t_v = np.sum(sim_goles_1t_l < sim_goles_1t_v) / n_simulaciones
+    prob_u25 = float(sum(matriz_ft[x, y] for x in range(8) for y in range(8) if x + y < 2.5))
+    under_2_5 = prob_u25
+    over_2_5 = 1.0 - under_2_5
     
-    # Mercado Goles (Over / Under)
-    goles_totales_sim = sim_goles_l + sim_goles_v
-    over_1_5 = np.sum(goles_totales_sim > 1.5) / n_simulaciones
-    under_1_5 = 1.0 - over_1_5
-    over_2_5 = np.sum(goles_totales_sim > 2.5) / n_simulaciones
-    under_2_5 = 1.0 - over_2_5
+    prob_u15 = float(sum(matriz_ft[x, y] for x in range(8) for y in range(8) if x + y < 1.5))
+    under_1_5 = prob_u15
+    over_1_5 = 1.0 - under_1_5
     
-    # Ambos Anotan (BTTS)
-    btts_si = np.sum((sim_goles_l > 0) & (sim_goles_v > 0)) / n_simulaciones
-    btts_no = 1.0 - btts_si
+    btts_no = float(matriz_ft[0, :].sum() + matriz_ft[:, 0].sum() - matriz_ft[0, 0])
+    btts_si = 1.0 - btts_no
 
-    # Promedios proyectados finales (Métricas clave para contrastar líneas asiáticas)
-    promedio_corners = float(np.mean(sim_corners_totales))
-    promedio_tarjetas = float(np.mean(sim_tarjetas_totales))
-    promedio_goles_totales = float(np.mean(goles_totales_sim))
+    # 4. Generación de Vectores Secundarios 
+    # (Exclusivo para calcular Líneas Asiáticas personalizadas sin romper report.py)
+    sim_corners_totales = np.random.poisson(lambda_cor_total, n_simulaciones)
+    sim_tarjetas_totales = np.random.poisson(lambda_tar_total, n_simulaciones)
 
-    # 4. Empaquetado de resultados en un diccionario limpio
+    # 5. Empaquetado final compatible con la UI
     resultados = {
         "prob_1x2": {"Local": gana_l, "Empate": empate, "Visita": gana_v},
         "prob_1x2_1t": {"Local": gana_1t_l, "Empate": empate_1t, "Visita": gana_1t_v},
@@ -86,9 +76,9 @@ def ejecutar_montecarlo(stats_local, stats_visita, n_simulaciones=100000):
             "btts_si": btts_si, "btts_no": btts_no
         },
         "proyecciones_metricas": {
-            "goles_promedio": promedio_goles_totales,
-            "corners_promedio": promedio_corners,
-            "tarjetas_promedio": promedio_tarjetas
+            "goles_promedio": lambda_l + lambda_v,
+            "corners_promedio": lambda_cor_total,
+            "tarjetas_promedio": lambda_tar_total
         },
         "vectores_raw": {
             "corners": sim_corners_totales,
@@ -100,8 +90,8 @@ def ejecutar_montecarlo(stats_local, stats_visita, n_simulaciones=100000):
 
 def evaluar_lineas_especificas(vector_simulado, linea_mercado):
     """
-    Compara un vector de eventos simulados contra una línea específica de la casa de apuestas.
-    Útil para calcular Over/Under exactos personalizados de Córners o Tarjetas.
+    Compara un vector de eventos simulados (Córners/Tarjetas) contra una línea asiática.
+    Mantiene la compatibilidad con el módulo de reportes.
     """
     over_prob = np.sum(vector_simulado > linea_mercado) / len(vector_simulado)
     under_prob = 1.0 - over_prob
